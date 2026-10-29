@@ -22,6 +22,10 @@ models/backup_*/
 # Dataset (large CSV)
 dataset/*.csv
 
+# Local Runtime Data
+backend/data/*.json
+!backend/data/.gitkeep
+
 # Firebase credentials (NEVER commit)
 backend/firebase/serviceAccountKey.json
 **/*.json.key
