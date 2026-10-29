@@ -40,6 +40,7 @@ const TOGGLES = [
 
 export default function RiskPrediction() {
   const [form,        setForm]        = useState(DEFAULT_FORM);
+  const [unitId,      setUnitId]      = useState("silo-1");
   const [result,      setResult]      = useState(null);
   const [loading,     setLoading]     = useState(false);
 
@@ -65,9 +66,9 @@ export default function RiskPrediction() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await predictSingle(form);
+      const res = await predictSingle(form, unitId);
       setResult(res);
-      toast.success(`Prediction: ${res.risk_category} Risk`);
+      toast.success(`Prediction: ${res.risk_category} Risk for ${unitId}`);
     } catch (err) {
       toast.error(`Prediction failed: ${err.message}`);
     } finally {

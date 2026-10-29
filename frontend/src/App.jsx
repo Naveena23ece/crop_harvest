@@ -21,11 +21,18 @@ import Settings          from "./pages/Settings";
 
 // ── Protected Route wrapper ─────────────────────────────────
 function ProtectedRoute({ children }) {
-  const { user } = useAuth();
-  // Allow demo access without auth (remove this check to enforce login)
-  return children;
-  // Uncomment to enforce auth:
-  // return user ? children : <Navigate to="/login" replace />;
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+          <span>Initializing GrainGuard AI...</span>
+        </div>
+      </div>
+    );
+  }
+  return user ? children : <Navigate to="/login" replace />;
 }
 
 function AppRoutes() {

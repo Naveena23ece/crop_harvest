@@ -24,6 +24,10 @@ dataset/*.csv
 
 # Local Runtime Data
 backend/data/*.json
+backend/data/*.db
+*.db
+backend/data/.jwt_secret
+.jwt_secret
 !backend/data/.gitkeep
 
 # Firebase credentials (NEVER commit)
