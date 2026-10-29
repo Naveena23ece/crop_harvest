@@ -793,8 +793,8 @@ async def predict_single(
         predictor = get_predictor()
         result = predictor.predict_single(reading.dict(), is_telemetry=False)
 
-        # Background persistence and external alerting
-        background_tasks.add_task(_persist_prediction_db, result, target_unit, reading.dict())
+        # Background persistence and external alerting (force_notify=True for manual tests)
+        background_tasks.add_task(_persist_prediction_db, result, target_unit, reading.dict(), force_notify=True)
 
         logger.info(f"/predict [{target_unit}] → {result['risk_category']} ({result['confidence']:.3f})")
         return result
@@ -1096,7 +1096,7 @@ async def retrain_model(
 # ─────────────────────────────────────────────
 # INTERNAL PERSISTENCE & ALERTING HELPERS
 # ─────────────────────────────────────────────
-async def _persist_prediction_db(result: Dict, unit_id: str = "silo-1", raw_reading: Dict = None):
+async def _persist_prediction_db(result: Dict, unit_id: str = "silo-1", raw_reading: Dict = None, force_notify: bool = False):
     """
     Saves prediction and telemetry to SQLite and local_store,
     and dispatches automated external notifications if High Risk is detected.
@@ -1165,7 +1165,8 @@ async def _persist_prediction_db(result: Dict, unit_id: str = "silo-1", raw_read
                 risk_category=result.get("risk_category", "High"),
                 confidence=result.get("confidence", 0.9),
                 readings=result.get("sensor_snapshot", raw_reading or {}),
-                recommendations=result.get("recommendations", [])
+                recommendations=result.get("recommendations", []),
+                force=force_notify
             )
 
         # 4. Firebase write if available

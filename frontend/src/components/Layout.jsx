@@ -190,7 +190,7 @@ export default function Layout() {
           {/* Right Header Utilities: ThemeToggle, Timestamp, Sign Out */}
           <div className="flex items-center gap-3 text-xs">
             <div className="hidden sm:flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-muted)]">
-              <span>{now.toUTCString().replace("GMT", "UTC")}</span>
+              <span>{now.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} • {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
             </div>
 
             {/* Global Theme Toggle */}

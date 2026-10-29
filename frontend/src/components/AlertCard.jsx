@@ -13,12 +13,10 @@ export default function AlertCard({ alert, onDismiss }) {
 
   if (!alert) return null;
 
-  const {
-    risk_category   = "High",
-    message         = "High risk detected",
-    recommendations = [],
-    timestamp,
-  } = alert;
+  const risk_category = alert.risk_category || alert.details?.risk_category || (alert.level === "HIGH" ? "High" : alert.level === "WARNING" ? "Moderate" : "Low");
+  const message = alert.message || (risk_category === "High" ? "Critical Spoilage Risk Condition" : "High risk detected");
+  const recommendations = alert.recommendations || alert.details?.recommendations || [];
+  const timestamp = alert.timestamp;
 
   const isHigh     = risk_category === "High";
   const isMod      = risk_category === "Moderate";

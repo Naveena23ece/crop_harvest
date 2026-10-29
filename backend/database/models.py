@@ -15,6 +15,13 @@ from backend.database.db import Base
 def _utcnow():
     return datetime.now(timezone.utc)
 
+def _iso(dt):
+    if not dt:
+        return None
+    if getattr(dt, "tzinfo", None) is not None:
+        return dt.isoformat()
+    return dt.isoformat() + "Z"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -35,8 +42,8 @@ class User(Base):
             "email": self.email,
             "role": self.role,
             "is_active": self.is_active,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "last_login": self.last_login.isoformat() if self.last_login else None,
+            "created_at": _iso(self.created_at),
+            "last_login": _iso(self.last_login),
         }
 
 
@@ -63,7 +70,7 @@ class StorageUnit(Base):
             "current_fill_tons": self.current_fill_tons,
             "location": self.location,
             "status": self.status,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": _iso(self.created_at),
         }
 
 
@@ -93,7 +100,7 @@ class SensorReading(Base):
         return {
             "id": self.id,
             "unit_id": self.unit_id,
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "timestamp": _iso(self.timestamp),
             "temperature_c": self.temperature_c,
             "humidity_pct": self.humidity_pct,
             "gas_concentration": self.gas_concentration,
@@ -134,7 +141,7 @@ class Prediction(Base):
         return {
             "id": self.id,
             "unit_id": self.unit_id,
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "timestamp": _iso(self.timestamp),
             "risk_category": self.risk_category,
             "confidence": round(self.confidence, 4),
             "probabilities": {
@@ -167,13 +174,13 @@ class Alert(Base):
         return {
             "id": self.id,
             "unit_id": self.unit_id,
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "timestamp": _iso(self.timestamp),
             "level": self.level,
             "message": self.message,
             "details": details,
             "acknowledged": self.acknowledged,
             "acknowledged_by": self.acknowledged_by,
-            "acknowledged_at": self.acknowledged_at.isoformat() if self.acknowledged_at else None,
+            "acknowledged_at": _iso(self.acknowledged_at),
         }
 
 
@@ -210,7 +217,7 @@ class NotificationConfig(Base):
             "whatsapp_phone": self.whatsapp_phone or "",
             "min_risk_level": self.min_risk_level,
             "cooldown_minutes": self.cooldown_minutes,
-            "last_sent_at": self.last_sent_at.isoformat() if self.last_sent_at else None,
+            "last_sent_at": _iso(self.last_sent_at),
         }
 
 
@@ -229,7 +236,7 @@ class NotificationLog(Base):
     def to_dict(self):
         return {
             "id": self.id,
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "timestamp": _iso(self.timestamp),
             "channel": self.channel,
             "recipient": self.recipient,
             "subject": self.subject,
@@ -255,7 +262,7 @@ class AuditLog(Base):
         details = json.loads(self.details_json) if self.details_json else {}
         return {
             "id": self.id,
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "timestamp": _iso(self.timestamp),
             "username": self.username,
             "action": self.action,
             "resource": self.resource,

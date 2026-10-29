@@ -25,9 +25,22 @@ export const RISK_ICONS = {
 };
 
 // ─── Date formatting ──────────────────────────────────────
+export const ensureUtc = (ts) => {
+  if (!ts) return ts;
+  if (typeof ts === "string") {
+    // If it's an ISO timestamp from SQLite without timezone suffix, append 'Z' so browsers parse it as UTC
+    const trimmed = ts.trim();
+    if (trimmed.includes("T") && !trimmed.endsWith("Z") && !trimmed.includes("+") && !trimmed.slice(10).includes("-")) {
+      return trimmed + "Z";
+    }
+  }
+  return ts;
+};
+
 export const formatTimestamp = (ts) => {
   try {
-    return format(typeof ts === "string" ? parseISO(ts) : ts, "MMM dd, HH:mm:ss");
+    const safeTs = ensureUtc(ts);
+    return format(typeof safeTs === "string" ? parseISO(safeTs) : safeTs, "MMM dd, HH:mm:ss");
   } catch {
     return ts || "—";
   }
@@ -35,8 +48,9 @@ export const formatTimestamp = (ts) => {
 
 export const timeAgo = (ts) => {
   try {
+    const safeTs = ensureUtc(ts);
     return formatDistanceToNow(
-      typeof ts === "string" ? parseISO(ts) : ts,
+      typeof safeTs === "string" ? parseISO(safeTs) : safeTs,
       { addSuffix: true }
     );
   } catch {
