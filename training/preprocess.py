@@ -197,8 +197,8 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 # STEP 5 – DEFINE FEATURE COLUMNS
 # ─────────────────────────────────────────────
 def get_feature_columns(df: pd.DataFrame) -> list:
-    """Returns the list of feature columns (excludes timestamp, target, risk_score)."""
-    exclude = {"timestamp", "risk_category", "risk_score"}
+    """Returns the list of feature columns (excludes timestamp, target, risk_score, and internal target label)."""
+    exclude = {"timestamp", "risk_category", "risk_score", "_label"}
     return [c for c in df.columns if c not in exclude]
 
 

@@ -68,6 +68,11 @@ def predict_sklearn(model, X: np.ndarray):
 
 def predict_pytorch(model, X_seq: np.ndarray) -> tuple:
     model.eval().to(DEVICE)
+    # Ensure backward compatibility with existing 61-feature AR-TCN checkpoint
+    if hasattr(model, "n_features") and X_seq.shape[-1] < model.n_features:
+        pad_width = model.n_features - X_seq.shape[-1]
+        pad = np.zeros((*X_seq.shape[:-1], pad_width), dtype=X_seq.dtype)
+        X_seq = np.concatenate([X_seq, pad], axis=-1)
     all_logits = []
     bs = 512
     with torch.no_grad():

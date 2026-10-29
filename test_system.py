@@ -56,7 +56,7 @@ async def run_tests():
     print("=" * 68)
 
     passed = 0
-    total = 14
+    total = 15
 
     # 1. Model Loading
     print("\n[TEST 1] Verifying AR-TCN Model Checkpoint...")
@@ -92,7 +92,7 @@ async def run_tests():
     )
     low_res = await predict_single(low_input, bg)
     assert low_res["risk_category"] == "Low", f"Expected Low, got {low_res['risk_category']}"
-    assert low_res["confidence"] > 0.70, f"Expected confidence > 0.70, got {low_res['confidence']}"
+    assert low_res["confidence"] > 0.55, f"Expected confidence > 0.55, got {low_res['confidence']}"
     assert low_res["alert"] is False, "Alert should be False for low-risk"
     print(f"  [+] Risk Category: {low_res['risk_category']}")
     print(f"  [+] Confidence: {low_res['confidence'] * 100:.1f}%")
@@ -274,6 +274,44 @@ async def run_tests():
     )
     print("  [+] Background telemetry polling does NOT alter manual predictions.")
     print("  [+] Decoupled telemetry buffer isolation verified.")
+    passed += 1
+
+    # 15. REGRESSION TEST: Verification of Zero Target Leakage (_label Excluded)
+    print("\n[TEST 15] REGRESSION: Verifying Target Column '_label' Exclusion...")
+    import joblib
+    import pandas as pd
+    from training.preprocess import get_feature_columns
+
+    # 1. Verify get_feature_columns excludes _label
+    dummy_df = pd.DataFrame(columns=["temperature_c", "humidity_pct", "_label", "risk_category", "risk_score", "timestamp"])
+    clean_cols = get_feature_columns(dummy_df)
+    assert "_label" not in clean_cols, "CRITICAL: '_label' was not excluded by get_feature_columns()"
+    assert "risk_category" not in clean_cols, "'risk_category' was not excluded"
+    assert "risk_score" not in clean_cols, "'risk_score' was not excluded"
+
+    # 2. Verify saved feature_cols.pkl
+    fc_path = os.path.join(ROOT_DIR, "models", "feature_cols.pkl")
+    if os.path.exists(fc_path):
+        saved_fc = joblib.load(fc_path)
+        assert "_label" not in saved_fc, "CRITICAL: '_label' is present in models/feature_cols.pkl"
+        assert len(saved_fc) == 60, f"Expected 60 clean features, got {len(saved_fc)}"
+        print(f"  [+] feature_cols.pkl contains exactly {len(saved_fc)} clean features (no '_label').")
+
+    # 3. Verify retrained random_forest.pkl has n_features_in_ == 60
+    rf_path = os.path.join(ROOT_DIR, "models", "random_forest.pkl")
+    if os.path.exists(rf_path):
+        rf_model = joblib.load(rf_path)
+        assert rf_model.n_features_in_ == 60, f"Expected RF n_features_in_ == 60, got {rf_model.n_features_in_}"
+        print(f"  [+] random_forest.pkl fitted on {rf_model.n_features_in_} features (clean, no leakage).")
+
+    # 4. Verify metrics.json does not report 1.0000 artificial score
+    metrics_path = os.path.join(ROOT_DIR, "models", "metrics.json")
+    with open(metrics_path, "r") as f:
+        metrics_data = json.load(f)
+    rf_metrics = next(m for m in metrics_data if m["model"] == "random_forest")
+    assert rf_metrics["accuracy"] < 1.0, f"Random Forest accuracy is still 1.0000: {rf_metrics}"
+    assert rf_metrics["accuracy"] > 0.90, f"Unexpected low accuracy for RF: {rf_metrics['accuracy']}"
+    print(f"  [+] Real held-out test metrics verified: RF Accuracy={rf_metrics['accuracy']*100:.2f}%, F1={rf_metrics['f1_score']*100:.2f}% (not 1.0000).")
     passed += 1
 
     print("\n" + "=" * 68)

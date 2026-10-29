@@ -173,8 +173,8 @@ export default function ModelPerformance() {
           )}
 
           {/* Diagnostic Note on Baseline Integrity */}
-          <div className="bg-amber-950/20 border border-amber-600/40 rounded-xl p-4 text-xs text-amber-300">
-            <span className="font-semibold text-amber-200">Technical Note:</span> The Random Forest tabular baseline reflects target leakage from residual label encoding in static feature matrices. AR-TCN (84.48% accuracy, 0.9578 ROC-AUC) was evaluated under strict causal temporal sequence constraints (predicting step t+1 from window t-12), ensuring zero lookahead bias and representing genuine time-series forecasting.
+          <div className="bg-emerald-950/20 border border-emerald-600/40 rounded-xl p-4 text-xs text-emerald-300">
+            <span className="font-semibold text-emerald-200">Baseline Integrity Verified:</span> Random Forest tabular baseline has been retrained with the target column <code className="text-emerald-100 bg-emerald-900/40 px-1 py-0.5 rounded">_label</code> strictly excluded from feature engineering. Metrics reflect genuine evaluation on the 18,750-sample held-out test set. AR-TCN operates under causal temporal convolution (predicting step t+1 from window t-12), delivering sequence-aware risk forecasting.
           </div>
 
           {/* Fallback notice */}

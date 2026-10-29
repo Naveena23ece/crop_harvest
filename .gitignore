@@ -16,6 +16,8 @@ models/*.pkl
 models/*.onnx
 models/plots/
 models/logs/
+models/backup_*/
+*.bak
 
 # Dataset (large CSV)
 dataset/*.csv

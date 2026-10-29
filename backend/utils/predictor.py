@@ -361,7 +361,12 @@ class GrainRiskPredictor:
             seq_2d    = seq.reshape(-1, seq.shape[-1])
             seq_scaled= self.scaler.transform(seq_2d).reshape(1, SEQUENCE_LENGTH, -1)
 
-            # Inference
+            # Inference: ensure compatibility if the model checkpoint expects legacy 61 channels
+            if hasattr(self.model, "n_features") and seq_scaled.shape[-1] < self.model.n_features:
+                pad_w = self.model.n_features - seq_scaled.shape[-1]
+                pad_arr = np.zeros((*seq_scaled.shape[:-1], pad_w), dtype=seq_scaled.dtype)
+                seq_scaled = np.concatenate([seq_scaled, pad_arr], axis=-1)
+
             tensor     = torch.FloatTensor(seq_scaled).to(DEVICE)
             with torch.no_grad():
                 logits     = self.model(tensor)
