@@ -65,7 +65,7 @@ export default function Login() {
               <GiWheat className="text-2xl" />
             </div>
             <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
-              GrainGuard AI
+              GrainGuard
             </h1>
             <p className="text-xs text-[var(--text-muted)] mt-1 font-medium">
               Post-Harvest Grain Risk Monitoring
@@ -173,10 +173,6 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="w-full max-w-6xl mx-auto py-3 text-center text-xs text-[var(--text-muted)] font-mono">
-        GrainGuard AI · Enterprise Agricultural Risk Engine v2.0
-      </div>
     </div>
   );
 }
