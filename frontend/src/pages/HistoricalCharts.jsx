@@ -41,7 +41,7 @@ export default function HistoricalCharts() {
         <div>
           <h1 className="text-2xl font-bold text-white">Historical Charts</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Sensor trends and correlations
+            Sensor trends and correlations · Replayed storage telemetry (Phase 1 Software Prototype)
           </p>
         </div>
         <select

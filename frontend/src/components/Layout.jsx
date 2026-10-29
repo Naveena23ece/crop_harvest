@@ -14,12 +14,13 @@ import {
 import { GiWheat } from "react-icons/gi";
 
 const NAV_ITEMS = [
-  { to: "/dashboard",  icon: FiHome,          label: "Dashboard"       },
-  { to: "/live",       icon: FiActivity,      label: "Live Monitoring" },
-  { to: "/history",    icon: FiDatabase,      label: "Historical Data" },
-  { to: "/prediction", icon: FiCpu,           label: "Risk Prediction" },
-  { to: "/alerts",     icon: FiAlertTriangle, label: "Alerts"          },
-  { to: "/settings",   icon: FiSettings,      label: "Settings"        },
+  { to: "/dashboard",   icon: FiHome,          label: "Dashboard"         },
+  { to: "/live",        icon: FiActivity,      label: "Live Monitoring"   },
+  { to: "/history",     icon: FiDatabase,      label: "Historical Data"   },
+  { to: "/prediction",  icon: FiCpu,           label: "Risk Prediction"   },
+  { to: "/performance", icon: FiBarChart2,     label: "Model Performance" },
+  { to: "/alerts",      icon: FiAlertTriangle, label: "Alerts"            },
+  { to: "/settings",    icon: FiSettings,      label: "Settings"          },
 ];
 
 export default function Layout() {

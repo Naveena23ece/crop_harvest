@@ -30,8 +30,10 @@ import json
 import logging
 import asyncio
 import subprocess
+from collections import deque
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+import pandas as pd
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,6 +56,36 @@ from backend.firebase.firebase_client import (
     get_mock_sensor_reading,
     init_firebase,
 )
+
+# ─────────────────────────────────────────────
+# IN-MEMORY SESSION BUFFERS (Software-phase demonstration)
+# ─────────────────────────────────────────────
+_session_predictions: deque = deque(maxlen=200)
+_session_alerts: deque = deque(maxlen=100)
+
+# Seed an initial alert to demonstrate alert structure safely
+_session_alerts.append({
+    "risk_category":   "High",
+    "message":         "HIGH RISK: Storage temperature and moisture threshold exceeded",
+    "recommendations": [
+        "Activate emergency ventilation immediately.",
+        "Inspect grain surface for early signs of clumping.",
+        "Check grain moisture levels with moisture probe."
+    ],
+    "sensor_snapshot": {
+        "temperature_c": 36.8,
+        "humidity_pct": 84.0,
+        "gas_concentration": 1280.0,
+        "grain_moisture": 17.5,
+        "storage_duration": 60,
+        "ext_temperature_c": 38.0,
+        "ventilation_status": 0,
+        "battery_voltage": 3.75,
+        "sensor_health": 1
+    },
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "source": "Session Buffer (Simulated Baseline)"
+})
 
 # ─────────────────────────────────────────────
 # LOGGING
@@ -150,6 +182,7 @@ class SensorSequence(BaseModel):
 
 
 class PredictionResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     timestamp:       str
     risk_category:   str
     confidence:      float
@@ -282,22 +315,49 @@ async def get_history(
     limit: int = Query(default=50, ge=1, le=500, description="Number of records to return"),
     type:  str = Query(default="predictions", description="predictions | sensors | alerts")
 ):
-    """Returns historical data from Firebase."""
+    """Returns historical data from Firebase or local simulated replay buffer."""
     try:
+        data_source = "firebase"
+        is_simulation = False
         if type == "predictions":
             records = get_prediction_history(limit)
+            if not records and _session_predictions:
+                records = list(_session_predictions)[-limit:]
+                data_source = "local_session_memory"
+                is_simulation = True
         elif type == "sensors":
             records = get_sensor_history(limit)
+            if not records:
+                # Load simulated replay from synthetic dataset
+                csv_path = os.path.join(
+                    os.path.dirname(__file__), "..", "..", "dataset", "grain_storage_dataset.csv"
+                )
+                if os.path.exists(csv_path):
+                    try:
+                        df_tail = pd.read_csv(csv_path).tail(limit)
+                        records = df_tail.to_dict(orient="records")
+                        data_source = "simulated_telemetry_replay"
+                        is_simulation = True
+                    except Exception as err:
+                        logger.warning(f"Failed to read dataset tail: {err}")
+                        records = []
         elif type == "alerts":
             records = get_alert_history(limit)
+            if not records and _session_alerts:
+                records = list(_session_alerts)[:limit]
+                data_source = "local_session_memory"
+                is_simulation = True
         else:
             raise HTTPException(status_code=400, detail="type must be: predictions|sensors|alerts")
 
         return {
-            "type":      type,
-            "count":     len(records),
-            "records":   records,
-            "timestamp": _utcnow(),
+            "type":               type,
+            "count":              len(records),
+            "records":            records,
+            "data_source":        data_source,
+            "is_physical_sensor": False if is_simulation else True,
+            "mode":               "Simulated Telemetry Replay (Phase 1 Software Prototype)" if is_simulation else "Live Sensor Telemetry",
+            "timestamp":          _utcnow(),
         }
     except HTTPException:
         raise
@@ -308,13 +368,18 @@ async def get_history(
 
 @app.get("/alerts", tags=["History"])
 async def get_alerts(limit: int = Query(default=20, ge=1, le=100)):
-    """Returns the most recent high-risk alerts."""
+    """Returns recent high-risk alerts."""
     try:
         alerts = get_alert_history(limit)
+        data_source = "firebase"
+        if not alerts and _session_alerts:
+            alerts = list(_session_alerts)[:limit]
+            data_source = "local_session_memory"
         return {
-            "count":     len(alerts),
-            "alerts":    alerts,
-            "timestamp": _utcnow(),
+            "count":       len(alerts),
+            "alerts":      alerts,
+            "data_source": data_source,
+            "timestamp":   _utcnow(),
         }
     except Exception as e:
         logger.error(f"/alerts error: {e}")
@@ -326,7 +391,7 @@ async def get_alerts(limit: int = Query(default=20, ge=1, le=100)):
 # ─────────────────────────────────────────────
 @app.get("/model-info", tags=["Model"])
 async def model_info():
-    """Returns metadata about the currently loaded model."""
+    """Returns metadata about the currently loaded model and evaluation results."""
     try:
         predictor = get_predictor()
         info = predictor.get_model_info()
@@ -341,6 +406,7 @@ async def model_info():
             artcn_metrics = next((m for m in all_metrics if m["model"] == "artcn"), None)
             if artcn_metrics:
                 info["evaluation_metrics"] = artcn_metrics
+            info["all_model_metrics"] = all_metrics
 
         return info
     except Exception as e:
@@ -417,19 +483,31 @@ async def get_recommendations(risk_level: str):
 # BACKGROUND TASK HELPERS
 # ─────────────────────────────────────────────
 async def _persist_prediction(result: Dict):
-    """Saves prediction to Firebase and creates alert if risk is High."""
+    """Saves prediction to session memory and Firebase if available."""
     try:
+        # In-memory session tracking for software-phase demonstration
+        _session_predictions.append(result)
+        if result.get("alert"):
+            _session_alerts.appendleft({
+                "risk_category":   result.get("risk_category", "High"),
+                "message":         "HIGH RISK: Anomaly detected during storage monitoring",
+                "recommendations": result.get("recommendations", []),
+                "sensor_snapshot": result.get("sensor_snapshot", {}),
+                "timestamp":       result.get("timestamp", _utcnow()),
+                "source":          "Live AR-TCN Prediction"
+            })
+
         write_prediction(result)
         if result.get("alert"):
             write_alert({
                 "risk_category":   result["risk_category"],
-                "message":        "HIGH RISK detected — immediate action required",
+                "message":         "HIGH RISK detected — immediate action required",
                 "recommendations": result["recommendations"],
                 "sensor_snapshot": result["sensor_snapshot"],
-                "timestamp":      result["timestamp"],
+                "timestamp":       result["timestamp"],
             })
     except Exception as e:
-        logger.warning(f"Failed to persist prediction to Firebase: {e}")
+        logger.warning(f"Failed to persist prediction: {e}")
 
 
 async def _run_training(model: str, dataset_path = None):
@@ -479,7 +557,7 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "backend.api.main:app",
-        host="0.0.0.0",
+        host="127.0.0.1",
         port=8000,
         reload=True,
         log_level="info",

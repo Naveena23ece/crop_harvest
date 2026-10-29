@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FILE: frontend/src/services/api.js
  * Axios-based API client for the FastAPI backend.
  * All backend calls are centralised here.
@@ -17,7 +17,7 @@ const apiClient = axios.create({
 // â”€â”€ Request interceptor (attach auth token if present) â”€â”€â”€â”€â”€â”€
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("auth_token");
-  if (token) config.headers.Authorization = Bearer ;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 

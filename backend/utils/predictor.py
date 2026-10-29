@@ -161,23 +161,35 @@ class GrainRiskPredictor:
         # Core sensor features
         row = [T, RH, G, M, D, ET, V, B, SH]
 
-        # Temporal cyclic
+        # Temporal cyclic (matches training/preprocess.py order: hour, doy, mo, dow, woy, sin/cos)
+        woy = int(now.isocalendar().week)
         row += [
-            hr, doy, mo, now.weekday(),
+            hr, doy, mo, now.weekday(), woy,
             math.sin(2*math.pi*hr/24), math.cos(2*math.pi*hr/24),
             math.sin(2*math.pi*doy/365), math.cos(2*math.pi*doy/365),
             math.sin(2*math.pi*mo/12),  math.cos(2*math.pi*mo/12),
         ]
 
-        # Interactions
+        # Interactions (matches training/preprocess.py: temp_hum, temp_moist, gas_hum, temp_ext, abs_hum, heat_idx)
+        abs_hum = 6.112 * math.exp(17.67*T/(T+243.5)) * RH * 2.1674 / (273.15 + T)
+        heat_idx = (
+            -42.379
+            + 2.04901523 * T
+            + 10.14333127 * RH
+            - 0.22475541 * T * RH
+            - 0.00683783 * T * T
+            - 0.05481717 * RH * RH
+            + 0.00122874 * T * T * RH
+            + 0.00085282 * T * RH * RH
+            - 0.00000199 * T * T * RH * RH
+        )
         row += [
             T * RH / 100,        # temp_humidity_idx
             T / (M + 1e-6),      # temp_moisture_ratio
             G / (RH + 1),        # gas_per_humidity
             T - ET,              # temp_ext_diff
-            6.112 * math.exp(17.67*T/(T+243.5)) * RH * 2.1674 / (273.15 + T),  # abs_humidity
-            -42.379 + 2.04901523*T + 10.14333127*RH  # heat_index (simplified)
-              - 0.22475541*T*RH - 0.00683783*T*T - 0.05481717*RH*RH,
+            abs_hum,             # absolute_humidity
+            heat_idx,            # heat_index (Rothfusz equation matching preprocess.py)
         ]
 
         # Rolling from buffer (mean / std of last 4 readings)
@@ -186,9 +198,9 @@ class GrainRiskPredictor:
             vals_4  = [b[col_idx] for b in buf[-4:]]  if buf else [row[col_idx]]
             vals_12 = [b[col_idx] for b in buf[-12:]] if buf else [row[col_idx]]
             row += [
-                np.mean(vals_4),
-                np.std(vals_4) if len(vals_4) > 1 else 0.0,
-                np.mean(vals_12),
+                float(np.mean(vals_4)),
+                float(np.std(vals_4)) if len(vals_4) > 1 else 0.0,
+                float(np.mean(vals_12)),
             ]
 
         # Lag features (1, 2, 4, 8)
@@ -204,6 +216,10 @@ class GrainRiskPredictor:
             prev1 = buf[-1][col_idx]  if buf else row[col_idx]
             prev4 = buf[-4][col_idx]  if len(buf) >= 4 else row[col_idx]
             row += [row[col_idx] - prev1, row[col_idx] - prev4]
+
+        # Column 60: placeholder for '_label' (target column present in feature_cols.pkl / scaler)
+        if self.feature_cols and len(row) < len(self.feature_cols):
+            row.append(0.0)
 
         return np.array(row, dtype=np.float32)
 

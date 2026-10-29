@@ -1,11 +1,11 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FiThermometer, FiDroplet, FiWind, FiRefreshCw } from "react-icons/fi";
 import { GiGrain } from "react-icons/gi";
 
 import useSensorData from "../hooks/useSensorData";
 import SensorCard from "../components/SensorCard";
 import SensorChart from "../components/SensorChart";
-import { fetchAlertHistory } from "../services/firebase";
+import { getAlerts } from "../services/api";
 import { formatSensor, formatTimestamp } from "../utils/helpers";
 
 export default function Dashboard() {
@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
-    fetchAlertHistory(10).then(setAlerts).catch(() => setAlerts([]));
+    getAlerts(10).then((res) => setAlerts(res?.alerts || [])).catch(() => setAlerts([]));
   }, []);
 
   const chartHistory = history.slice(-60);

@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { fetchAlertHistory } from "../services/firebase";
+import { getAlerts }         from "../services/api";
 import AlertCard             from "../components/AlertCard";
 import { formatTimestamp }   from "../utils/helpers";
 
@@ -13,8 +13,8 @@ export default function AlertHistory() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAlertHistory(50)
-      .then(setAlerts)
+    getAlerts(50)
+      .then((res) => setAlerts(res?.alerts || []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -24,7 +24,7 @@ export default function AlertHistory() {
       <div>
         <h1 className="text-2xl font-bold text-white">Alert History</h1>
         <p className="text-gray-500 text-sm mt-1">
-          All high-risk events detected by the AI system
+          High-risk events detected by the AR-TCN model (Live session memory & software-phase baseline)
         </p>
       </div>
 

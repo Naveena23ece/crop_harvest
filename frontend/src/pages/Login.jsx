@@ -119,8 +119,11 @@ export default function Login() {
               className="mt-4 w-full py-3 border-2 border-green-600 text-green-700
                          hover:bg-green-50 font-semibold rounded-lg transition-colors duration-200"
             >
-              🚀 Enter Demo Mode
+              🚀 Enter Demo Mode (Software Prototype)
             </button>
+            <p className="text-center text-gray-400 text-xs mt-2">
+              Software-Phase Prototype · Cloud auth and physical ESP32 streaming scheduled for Phase 2
+            </p>
           </div>
         </div>
 
