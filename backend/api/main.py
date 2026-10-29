@@ -24,6 +24,19 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 import pandas as pd
 
+try:
+    from dotenv import load_dotenv
+    for candidate in [
+        os.path.join(os.path.dirname(__file__), "..", ".env"),
+        os.path.join(os.path.dirname(__file__), "..", "..", ".env"),
+        ".env",
+        "backend/.env",
+    ]:
+        if os.path.exists(candidate):
+            load_dotenv(candidate)
+except ImportError:
+    pass
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Depends, status, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse

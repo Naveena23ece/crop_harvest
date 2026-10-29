@@ -12,6 +12,20 @@ import os
 import json
 import logging
 from datetime import datetime, timezone
+
+try:
+    from dotenv import load_dotenv
+    for candidate in [
+        os.path.join(os.path.dirname(__file__), "..", ".env"),
+        os.path.join(os.path.dirname(__file__), "..", "..", ".env"),
+        ".env",
+        "backend/.env",
+    ]:
+        if os.path.exists(candidate):
+            load_dotenv(candidate)
+except ImportError:
+    pass
+
 from backend.database.db import engine, SessionLocal, Base, DATA_DIR
 from backend.database.models import (
     User, StorageUnit, SensorReading, Prediction, Alert,
