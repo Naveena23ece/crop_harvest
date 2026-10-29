@@ -10,14 +10,21 @@ env/
 dist/
 build/
 
-# Models (large files)
-models/*.pt
-models/*.pkl
+# Models (keep heavy/temporary files ignored)
 models/*.onnx
 models/plots/
 models/logs/
 models/backup_*/
+models/random_forest.pkl
+models/artcn_best.pt
 *.bak
+
+# Explicitly track production AR-TCN model artifacts (approx ~350 KB total)
+!models/artcn.pt
+!models/scaler.pkl
+!models/label_encoder.pkl
+!models/feature_cols.pkl
+!models/metrics.json
 
 # Dataset (large CSV)
 dataset/*.csv
