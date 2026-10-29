@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.env
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Models (large files)
+models/*.pt
+models/*.pkl
+models/*.onnx
+models/plots/
+models/logs/
+
+# Dataset (large CSV)
+dataset/*.csv
+
+# Firebase credentials (NEVER commit)
+backend/firebase/serviceAccountKey.json
+**/*.json.key
+
+# Node.js
+frontend/node_modules/
+frontend/build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

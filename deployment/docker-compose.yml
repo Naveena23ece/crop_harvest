@@ -1,0 +1,55 @@
+# ============================================================
+# FILE: deployment/docker-compose.yml
+# Orchestrates backend + frontend containers.
+# Usage:
+#   cd deployment
+#   docker-compose up --build
+# ============================================================
+
+version: "3.9"
+
+services:
+  # ── FastAPI Backend ─────────────────────────────────────
+  backend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.backend
+    container_name: grainguard_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - FIREBASE_CREDENTIALS_PATH=/app/backend/firebase/serviceAccountKey.json
+      - FIREBASE_DB_URL=${FIREBASE_DB_URL:-https://grain-storage-monitor-default-rtdb.firebaseio.com}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../models:/app/models          # persist trained models
+      - ../dataset:/app/dataset        # dataset volume
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── React Frontend ──────────────────────────────────────
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.frontend
+      args:
+        REACT_APP_API_URL: http://localhost:8000
+        REACT_APP_FIREBASE_DATABASE_URL: ${REACT_APP_FIREBASE_DATABASE_URL:-}
+        REACT_APP_FIREBASE_API_KEY: ${REACT_APP_FIREBASE_API_KEY:-}
+        REACT_APP_FIREBASE_PROJECT_ID: ${REACT_APP_FIREBASE_PROJECT_ID:-}
+    container_name: grainguard_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  default:
+    name: grainguard_net
