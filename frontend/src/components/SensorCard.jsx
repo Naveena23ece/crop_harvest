@@ -1,7 +1,7 @@
 /**
  * FILE: frontend/src/components/SensorCard.jsx
- * Reusable metric card for displaying a single sensor value with
- * an icon, value, unit, and optional trend indicator.
+ * Professional Industrial Sensor Metric Card for GrainGuard AI.
+ * Adapts to Light and Dark themes with clean typography and precise unit indicators.
  */
 
 import React from "react";
@@ -9,57 +9,39 @@ import React from "react";
 export default function SensorCard({
   title,
   value,
-  unit       = "",
+  unit = "",
   icon,
-  color      = "text-blue-400",
-  bgColor    = "bg-blue-500/10",
-  borderColor= "border-blue-500/30",
-  trend      = null,   // "up" | "down" | null
-  status     = null,   // "ok" | "warning" | "critical"
-  loading    = false,
+  status = null,
+  loading = false,
 }) {
-  const statusColors = {
-    ok:       "bg-green-500",
-    warning:  "bg-amber-500",
-    critical: "bg-red-500",
-  };
-
   return (
-    <div
-      className="metric-card"
-    >
-      {/* Status dot */}
-      {status && (
-        <span
-          className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full
-                      ${statusColors[status] || "bg-gray-500"}`}
-          title={`Status: ${status}`}
-        />
-      )}
-
-      {/* Icon + Title */}
-      <div className="flex items-center gap-3 mb-3">
-        <div className={`text-2xl ${color}`}>{icon}</div>
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+    <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg p-4 shadow-sm transition-colors duration-150">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-[var(--text-muted)] tracking-tight uppercase">
           {title}
         </span>
+        <div className="text-base text-emerald-600 dark:text-emerald-500">{icon}</div>
       </div>
 
-      {/* Value */}
       {loading ? (
-        <div className="h-8 w-24 bg-gray-700 animate-pulse rounded" />
+        <div className="h-7 w-24 bg-[var(--bg-surface-elevated)] animate-pulse rounded my-1" />
       ) : (
-        <div className={`text-3xl font-bold ${color}`}>
-          {value ?? "—"}
-          <span className="text-base font-normal text-gray-400 ml-1">{unit}</span>
+        <div className="flex items-baseline gap-1 mt-1">
+          <span className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
+            {value ?? "—"}
+          </span>
+          {unit && (
+            <span className="text-xs font-medium text-[var(--text-muted)]">
+              {unit}
+            </span>
+          )}
         </div>
       )}
 
-      {/* Trend */}
-      {trend && (
-        <div className={`mt-2 text-xs flex items-center gap-1
-                         ${trend === "up" ? "text-red-400" : "text-green-400"}`}>
-          {trend === "up" ? "▲" : "▼"} Trending {trend}
+      {status && (
+        <div className="mt-2 text-[11px] text-[var(--text-secondary)] flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span>{status}</span>
         </div>
       )}
     </div>

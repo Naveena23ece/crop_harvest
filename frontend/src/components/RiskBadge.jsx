@@ -13,9 +13,9 @@ const PULSE_CLASS = {
 };
 
 const BG_CLASS = {
-  Low:      "bg-green-500/20 border-green-500/50 text-green-400",
-  Moderate: "bg-amber-500/20  border-amber-500/50  text-amber-400",
-  High:     "bg-red-500/20    border-red-500/50    text-red-400",
+  Low:      "bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+  Moderate: "bg-amber-500/10  border-amber-500/40  text-amber-700 dark:text-amber-400",
+  High:     "bg-red-500/10    border-red-500/40    text-red-700 dark:text-red-400",
 };
 
 export default function RiskBadge({ risk, size = "md", confidence = null }) {

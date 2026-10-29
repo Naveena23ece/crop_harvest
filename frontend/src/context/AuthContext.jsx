@@ -1,18 +1,17 @@
 /**
  * FILE: frontend/src/context/AuthContext.jsx
  * Provides NIST-compliant JWT Authentication and Role-Based Access Control context.
- * Manages active user claims, role enforcement (admin vs viewer), and session persistence.
+ * Manages active user claims, server token sessions, and role enforcement.
  */
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { loginApi, logoutApi, getMeApi, signupApi } from "../services/api";
+import { loginApi, logoutApi, getMeApi } from "../services/api";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     // Check if an existing session token is stored in sessionStorage
@@ -25,7 +24,6 @@ export function AuthProvider({ children }) {
             setUser(res.user);
           }
         } catch (err) {
-          console.warn("Session token expired or invalid:", err);
           sessionStorage.removeItem("grainguard_token");
           setUser(null);
         }
@@ -41,14 +39,9 @@ export function AuthProvider({ children }) {
     if (res?.access_token) {
       sessionStorage.setItem("grainguard_token", res.access_token);
       setUser(res.user);
-      setDemoMode(false);
       return res.user;
     }
     throw new Error("No access token returned by authentication server.");
-  };
-
-  const signup = async (username, email, password) => {
-    return await signupApi(username, email, password);
   };
 
   const logout = async () => {
@@ -59,22 +52,7 @@ export function AuthProvider({ children }) {
     } finally {
       sessionStorage.removeItem("grainguard_token");
       setUser(null);
-      setDemoMode(false);
     }
-  };
-
-  // Safe client-side demo entry for prototype evaluation
-  const enterDemo = (role = "viewer") => {
-    const demoUser = {
-      id: 999,
-      username: role === "admin" ? "demo_admin" : "demo_viewer",
-      email: `${role}@grainguard.demo`,
-      role: role,
-      is_active: true,
-      is_demo: true,
-    };
-    setUser(demoUser);
-    setDemoMode(true);
   };
 
   const isAdmin = user?.role === "admin";
@@ -85,13 +63,10 @@ export function AuthProvider({ children }) {
       value={{
         user,
         loading,
-        demoMode,
         isAdmin,
         isViewer,
         login,
-        signup,
         logout,
-        enterDemo,
       }}
     >
       {!loading && children}

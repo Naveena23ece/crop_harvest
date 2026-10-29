@@ -303,32 +303,14 @@ async def login(req: LoginRequest, request: Request, db: Session = Depends(get_d
 @app.post("/auth/signup", tags=["Authentication"])
 async def public_signup(req: SignupRequest, request: Request, db: Session = Depends(get_db)):
     """
-    Public registration endpoint. Always assigns 'viewer' role to prevent privilege escalation.
-    Enforces minimum 8-character password.
+    Public self-registration is strictly disabled.
+    All accounts must be provisioned by an Administrator via the Admin Portal.
     """
-    if len(req.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
-
-    if db.query(User).filter(User.username == req.username).first():
-        raise HTTPException(status_code=400, detail="Username is already registered.")
-
-    if db.query(User).filter(User.email == req.email).first():
-        raise HTTPException(status_code=400, detail="Email is already registered.")
-
-    new_user = User(
-        username=req.username,
-        email=req.email,
-        hashed_password=hash_password(req.password),
-        role="viewer",  # Strictly viewer for public signup
-        is_active=True,
-        created_at=datetime.now(timezone.utc)
+    log_audit(db, req.username, "SIGNUP_REJECTED", "auth", {"error": "Public registration disabled"}, request.client.host if request.client else None)
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Public self-registration is disabled. User accounts must be created by an Administrator."
     )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    log_audit(db, req.username, "PUBLIC_SIGNUP", "users", {"role": "viewer"}, request.client.host if request.client else None, new_user.id)
-    return {"message": "Account created successfully as Viewer.", "user": new_user.to_dict()}
 
 
 @app.post("/auth/logout", tags=["Authentication"])
@@ -366,16 +348,18 @@ async def create_user_as_admin(
     """Admin-only: Create user with explicit role assignment ('admin' or 'viewer')."""
     if req.role not in ("admin", "viewer"):
         raise HTTPException(status_code=400, detail="Invalid role. Must be 'admin' or 'viewer'.")
-    if len(req.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
-    if db.query(User).filter(User.username == req.username).first():
+    if len(req.username.strip()) < 3:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters long.")
+    if len(req.password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters long.")
+    if db.query(User).filter(User.username == req.username.strip()).first():
         raise HTTPException(status_code=400, detail="Username is already in use.")
-    if db.query(User).filter(User.email == req.email).first():
+    if db.query(User).filter(User.email == req.email.strip()).first():
         raise HTTPException(status_code=400, detail="Email is already in use.")
 
     new_user = User(
-        username=req.username,
-        email=req.email,
+        username=req.username.strip(),
+        email=req.email.strip(),
         hashed_password=hash_password(req.password),
         role=req.role,
         is_active=True,
@@ -386,7 +370,7 @@ async def create_user_as_admin(
     db.refresh(new_user)
 
     log_audit(db, admin.username, "ADMIN_CREATE_USER", "users", {"target_user": req.username, "role": req.role}, user_id=admin.id)
-    return {"message": "User account created.", "user": new_user.to_dict()}
+    return {"message": f"User account '{new_user.username}' created as {new_user.role.upper()}.", "user": new_user.to_dict()}
 
 
 @app.patch("/admin/users/{user_id}", tags=["Admin Management"])
@@ -905,12 +889,15 @@ async def get_history(
                 if unit_id:
                     query = query.filter(DBSensorReading.unit_id == unit_id)
                 db_sensors = query.order_by(desc(DBSensorReading.timestamp)).limit(limit).all()
-                if db_sensors:
+                if db_sensors and len(db_sensors) >= limit:
                     records = [r.to_dict() for r in db_sensors]
                 if not records:
                     records = local_store.get_sensor_history(limit)
-                    data_source = "local_prototype_persistence"
-                if not records:
+                    if records and len(records) >= limit:
+                        data_source = "local_prototype_persistence"
+                    else:
+                        records = []
+                if not records or len(records) < limit:
                     csv_path = os.path.join(
                         os.path.dirname(__file__), "..", "..", "dataset", "grain_storage_dataset.csv"
                     )

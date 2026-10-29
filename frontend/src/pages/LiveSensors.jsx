@@ -41,12 +41,12 @@ export default function LiveSensors() {
   const { sensorData, prediction, history, loading, lastUpdated } = useSensorData();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pb-4 border-b border-[var(--border-color)]">
         <div>
-          <h1 className="text-2xl font-bold text-white">Live Sensor Data</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Live Sensor Data</h1>
+          <p className="text-[var(--text-muted)] text-xs mt-1">
             Simulated telemetry stream (Phase 1 Software Prototype · Physical ESP32 scheduled for Phase 2)
             {lastUpdated && ` · Last: ${formatTimestamp(lastUpdated)}`}
           </p>
@@ -69,9 +69,9 @@ export default function LiveSensors() {
           { label: "Moisture",    value: formatSensor(sensorData?.grain_moisture, " %") },
         ].map(({ label, value }) => (
           <div key={label}
-               className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{label}</p>
-            <p className={`text-2xl font-bold ${loading ? "text-gray-600" : "text-white"}`}>
+               className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-4 text-center shadow-sm">
+            <p className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{label}</p>
+            <p className={`text-2xl font-bold ${loading ? "text-[var(--text-muted)]" : "text-[var(--text-primary)]"}`}>
               {loading ? "..." : value}
             </p>
           </div>
@@ -82,10 +82,10 @@ export default function LiveSensors() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {SENSOR_PANELS.map((panel) => (
           <div key={panel.title}
-               className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+               className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-5 shadow-sm">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-sm font-medium text-gray-300">{panel.title}</h3>
-              <span className="text-xs text-gray-600">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">{panel.title}</h3>
+              <span className="text-xs text-[var(--text-muted)]">
                 Safe range: {panel.safeRange}
               </span>
             </div>
@@ -100,8 +100,8 @@ export default function LiveSensors() {
       </div>
 
       {/* Correlation chart */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-        <h3 className="text-sm font-medium text-gray-400 mb-3">
+      <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
           Multi-Sensor Overlay (last 48 readings)
         </h3>
         <SensorChart

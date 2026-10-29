@@ -352,24 +352,25 @@ async def run_tests():
     db = SessionLocal()
     u_count_after = db.query(User).count()
     a_count_after = db.query(DBAlert).count()
-    admin_user = db.query(User).filter(User.username == "admin").first()
+    naveena_user = db.query(User).filter(User.username == "Naveena").first()
     viewer_user = db.query(User).filter(User.username == "viewer").first()
     db.close()
 
     assert u_count_before == u_count_after, "Repeated initialization duplicated user accounts"
     assert a_count_before == a_count_after, "Repeated initialization duplicated alerts or records"
-    assert admin_user is not None and admin_user.role == "admin", "Admin account missing or corrupted"
+    assert naveena_user is not None and naveena_user.role == "admin", "Naveena Admin account missing or corrupted"
+    assert verify_password("2004", naveena_user.hashed_password) is True, "Naveena password verification failed"
     assert viewer_user is not None and viewer_user.role == "viewer", "Viewer account missing or corrupted"
-    print(f"  [+] Idempotence verified: users={u_count_after}, alerts={a_count_after} (zero duplicates).")
+    print(f"  [+] Idempotence verified: users={u_count_after}, alerts={a_count_after} (zero duplicates, Naveena Admin verified).")
     passed += 1
 
     # 18. Authentication & JWT Token Issuance
     print("\n[TEST 18] AUTH: Verifying JWT Access Token Claims & Lifespan...")
-    claims = {"sub": "admin", "role": "admin", "uid": 1}
+    claims = {"sub": "Naveena", "role": "admin", "uid": naveena_user.id}
     token = create_access_token(claims)
     decoded = decode_access_token(token)
     assert decoded is not None, "Failed to decode valid access token"
-    assert decoded["sub"] == "admin" and decoded["role"] == "admin", "Token claims mismatch"
+    assert decoded["sub"] == "Naveena" and decoded["role"] == "admin", "Token claims mismatch"
     assert "exp" in decoded and "iat" in decoded, "Token missing expiration or issuance timestamp"
     print(f"  [+] JWT Token generated and verified with HS256: sub={decoded['sub']}, role={decoded['role']}")
     passed += 1
@@ -382,26 +383,55 @@ async def run_tests():
     print("  [+] Token blacklist verified: revoked token rejected immediately.")
     passed += 1
 
-    # 20. Role Escalation Prevention on Signup
-    print("\n[TEST 20] SECURITY: Testing Role Escalation Prevention on Registration...")
-    from backend.api.main import public_signup, SignupRequest
+    # 20. Public Self-Registration Strictly Disabled
+    print("\n[TEST 20] SECURITY: Verifying Public Self-Registration is Disabled...")
+    from backend.api.main import public_signup, SignupRequest, create_user_as_admin, UserCreateRequest
     from unittest.mock import MagicMock
     req_mock = MagicMock()
     req_mock.client.host = "127.0.0.1"
 
     db = SessionLocal()
-    # Try public signup
+    # Try public signup - must fail with 403 Forbidden
     signup_req = SignupRequest(username="test_public_user", email="test_public@grainguard.org", password="Password123!")
-    res = await public_signup(signup_req, req_mock, db)
-    assert res["user"]["role"] == "viewer", f"Public signup must strictly assign 'viewer', got: {res['user']['role']}"
+    try:
+        await public_signup(signup_req, req_mock, db)
+        assert False, "Public registration must be rejected with 403 Forbidden"
+    except HTTPException as e:
+        assert e.status_code == 403, f"Expected status 403 Forbidden, got {e.status_code}"
+        print(f"  [+] Public registration correctly rejected with 403: {e.detail}")
+
+    # Verify Admin can create Viewer account
+    admin_actor = db.query(User).filter(User.username == "Naveena").first()
+    new_viewer_req = UserCreateRequest(
+        username="operator_viewer1",
+        email="operator1@grainguard.local",
+        password="ViewerSecure2026!",
+        role="viewer"
+    )
+    # Clean if exists from prior run
+    existing_test = db.query(User).filter(User.username == "operator_viewer1").first()
+    if existing_test:
+        db.delete(existing_test)
+        db.commit()
+
+    created_res = await create_user_as_admin(new_viewer_req, admin_actor, db)
+    assert created_res["user"]["role"] == "viewer"
+    assert created_res["user"]["username"] == "operator_viewer1"
+
+    # Verify duplicate username rejection
+    try:
+        await create_user_as_admin(new_viewer_req, admin_actor, db)
+        assert False, "Duplicate username should have been rejected"
+    except HTTPException as dup_e:
+        assert dup_e.status_code == 400
+        print(f"  [+] Duplicate username correctly rejected: {dup_e.detail}")
 
     # Clean up test user
-    test_u = db.query(User).filter(User.username == "test_public_user").first()
+    test_u = db.query(User).filter(User.username == "operator_viewer1").first()
     if test_u:
         db.delete(test_u)
         db.commit()
     db.close()
-    print("  [+] Role escalation prevented: public registration strictly assigned 'viewer'.")
     passed += 1
 
     # 21. Viewer Role Denial on Admin Endpoints
@@ -417,9 +447,9 @@ async def run_tests():
 
     # 22. Admin Authorization on Management Endpoints
     print("\n[TEST 22] RBAC: Testing Admin Access on Administrative Endpoints...")
-    dummy_admin = User(id=1, username="admin", role="admin", is_active=True)
+    dummy_admin = User(id=1, username="Naveena", role="admin", is_active=True)
     authorized = require_admin(dummy_admin)
-    assert authorized.username == "admin", "Admin user failed authorization"
+    assert authorized.username == "Naveena", "Admin user failed authorization"
     print(f"  [+] Admin authorized successfully for administrative operations.")
     passed += 1
 

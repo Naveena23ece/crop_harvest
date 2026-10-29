@@ -61,12 +61,12 @@ def _init_accounts(db):
     Credentials can be configured via environment variables.
     If the accounts already exist, passwords are NOT overwritten.
     """
-    admin_user = os.environ.get("GRAINGUARD_ADMIN_USER", "admin")
-    admin_pass = os.environ.get("GRAINGUARD_ADMIN_PASS", "Admin@GrainGuard2026!")
-    admin_email = os.environ.get("GRAINGUARD_ADMIN_EMAIL", "admin@grainguard.local")
+    admin_user = os.environ.get("GRAINGUARD_ADMIN_USER", "Naveena")
+    admin_pass = os.environ.get("GRAINGUARD_ADMIN_PASS", "2004")
+    admin_email = os.environ.get("GRAINGUARD_ADMIN_EMAIL", "naveena@grainguard.local")
 
     viewer_user = os.environ.get("GRAINGUARD_VIEWER_USER", "viewer")
-    viewer_pass = os.environ.get("GRAINGUARD_VIEWER_PASS", "Viewer@GrainGuard2026!")
+    viewer_pass = os.environ.get("GRAINGUARD_VIEWER_PASS", "viewer2026")
     viewer_email = os.environ.get("GRAINGUARD_VIEWER_EMAIL", "viewer@grainguard.local")
 
     # Check Admin

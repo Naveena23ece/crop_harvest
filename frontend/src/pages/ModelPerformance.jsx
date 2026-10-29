@@ -32,8 +32,8 @@ const ALL_MODELS = [
 
 function MetricPill({ label, value, color }) {
   return (
-    <div className="bg-gray-800 rounded-lg p-3 text-center border border-gray-700">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
+    <div className="bg-[var(--bg-surface)] rounded-lg p-3 text-center border border-[var(--border-color)] shadow-sm">
+      <p className="text-xs text-[var(--text-muted)] mb-1 font-medium">{label}</p>
       <p className="text-xl font-bold" style={{ color }}>
         {value !== null && value !== undefined ? (value * 100).toFixed(1) + "%" : "—"}
       </p>
@@ -65,34 +65,34 @@ export default function ModelPerformance() {
   ] : [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Model Performance</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          AR-TCN evaluation metrics and baseline comparisons
+    <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="pb-4 border-b border-[var(--border-color)]">
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Model Evaluation & Benchmark</h1>
+        <p className="text-[var(--text-muted)] text-xs mt-1">
+          AR-TCN validation metrics, receptive field characteristics, and comparative baseline benchmarks
         </p>
       </div>
 
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-20 bg-gray-900 rounded-xl animate-pulse border border-gray-800" />
+            <div key={i} className="h-20 bg-[var(--bg-surface-elevated)] rounded-xl animate-pulse border border-[var(--border-color)]" />
           ))}
         </div>
       ) : (
         <>
           {/* Model info strip */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 grid
-                          grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-4 grid
+                          grid-cols-2 md:grid-cols-4 gap-4 shadow-sm">
             {[
-              { label: "Model",     value: info?.name          || "AR-TCN"    },
-              { label: "Version",   value: info?.version       || "1.0.0"     },
-              { label: "Device",    value: info?.device        || "CPU"       },
-              { label: "Features",  value: info?.n_features    || "—"         },
+              { label: "Active Architecture", value: info?.name       || "AR-TCN" },
+              { label: "Model Version",      value: info?.version    || "2.0.0"  },
+              { label: "Execution Device",   value: info?.device     || "CPU"    },
+              { label: "Feature Dimension",  value: info?.n_features || "61"     },
             ].map(({ label, value }) => (
               <div key={label}>
-                <p className="text-xs text-gray-500">{label}</p>
-                <p className="text-sm font-semibold text-white mt-0.5">{value}</p>
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-medium">{label}</p>
+                <p className="text-sm font-semibold text-[var(--text-primary)] mt-0.5">{value}</p>
               </div>
             ))}
           </div>
@@ -110,29 +110,34 @@ export default function ModelPerformance() {
 
           {/* Radar chart */}
           {radarData.length > 0 && (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-              <h3 className="text-sm font-medium text-gray-400 mb-3">
-                AR-TCN Performance Radar
+            <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-5 shadow-sm">
+              <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+                AR-TCN Multi-Metric Radar Analysis
               </h3>
               <ResponsiveContainer width="100%" height={280}>
                 <RadarChart data={radarData}>
-                  <PolarGrid stroke="#374151" />
+                  <PolarGrid stroke="var(--border-color)" />
                   <PolarAngleAxis
                     dataKey="metric"
-                    tick={{ fill: "#9ca3af", fontSize: 12 }}
+                    tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
                   />
                   <Radar
                     name="AR-TCN"
                     dataKey="value"
-                    stroke="#22c55e"
+                    stroke="#16a34a"
                     fill="#22c55e"
                     fillOpacity={0.25}
                     strokeWidth={2}
                   />
                   <Tooltip
                     formatter={(v) => [`${v}%`, "Score"]}
-                    contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151",
-                                    borderRadius: "8px", color: "#e5e7eb" }}
+                    contentStyle={{
+                      backgroundColor: "var(--bg-surface-elevated)",
+                      border: "1px solid var(--border-color)",
+                      borderRadius: "6px",
+                      color: "var(--text-primary)",
+                      fontSize: "12px",
+                    }}
                   />
                 </RadarChart>
               </ResponsiveContainer>
@@ -141,9 +146,9 @@ export default function ModelPerformance() {
 
           {/* Model comparison bar chart */}
           {allMetrics.length > 0 && (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-              <h3 className="text-sm font-medium text-gray-400 mb-3">
-                Baseline Comparison — F1 Score
+            <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-5 shadow-sm">
+              <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+                Baseline Model Comparative Performance — F1 Score & Accuracy
               </h3>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart
@@ -154,37 +159,44 @@ export default function ModelPerformance() {
                   }))}
                   margin={{ top: 5, right: 10, bottom: 30, left: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                  <XAxis dataKey="name" tick={{ fill: "#9ca3af", fontSize: 11 }}
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                  <XAxis dataKey="name" tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
                          angle={-20} textAnchor="end" />
-                  <YAxis domain={[60, 100]} tick={{ fill: "#9ca3af", fontSize: 11 }}
+                  <YAxis domain={[60, 100]} tick={{ fill: "var(--text-muted)", fontSize: 10 }}
                          tickFormatter={(v) => `${v}%`} />
                   <Tooltip
                     formatter={(v) => `${v}%`}
-                    contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151",
-                                    borderRadius: "8px", color: "#e5e7eb" }}
+                    contentStyle={{
+                      backgroundColor: "var(--bg-surface-elevated)",
+                      border: "1px solid var(--border-color)",
+                      borderRadius: "6px",
+                      color: "var(--text-primary)",
+                      fontSize: "12px",
+                    }}
                   />
-                  <Legend wrapperStyle={{ fontSize: "12px", color: "#9ca3af" }} />
-                  <Bar dataKey="f1"  name="F1 Score"  fill="#22c55e" radius={[4,4,0,0]} />
-                  <Bar dataKey="acc" name="Accuracy"  fill="#3b82f6" radius={[4,4,0,0]} />
+                  <Legend wrapperStyle={{ fontSize: "11px", color: "var(--text-secondary)" }} />
+                  <Bar dataKey="f1"  name="F1 Score"  fill="#16a34a" radius={[4,4,0,0]} />
+                  <Bar dataKey="acc" name="Accuracy"  fill="#2563eb" radius={[4,4,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
 
           {/* Diagnostic Note on Baseline Integrity */}
-          <div className="bg-emerald-950/20 border border-emerald-600/40 rounded-xl p-4 text-xs text-emerald-300">
-            <span className="font-semibold text-emerald-200">Baseline Integrity Verified:</span> Random Forest tabular baseline has been retrained with the target column <code className="text-emerald-100 bg-emerald-900/40 px-1 py-0.5 rounded">_label</code> strictly excluded from feature engineering. Metrics reflect genuine evaluation on the 18,750-sample held-out test set. AR-TCN operates under causal temporal convolution (predicting step t+1 from window t-12), delivering sequence-aware risk forecasting.
+          <div className="bg-emerald-950/5 dark:bg-emerald-950/20 border border-emerald-600/30 rounded-xl p-4 text-xs text-emerald-800 dark:text-emerald-300">
+            <span className="font-semibold text-emerald-900 dark:text-emerald-200">Baseline Integrity Verified:</span> Random Forest tabular baseline has been retrained with the target column <code className="text-emerald-900 dark:text-emerald-100 bg-emerald-100 dark:bg-emerald-900/40 px-1 py-0.5 rounded font-mono">_label</code> strictly excluded from feature engineering. Metrics reflect genuine evaluation on the 18,750-sample held-out test set. AR-TCN operates under causal temporal convolution (predicting step t+1 from window t-12), delivering sequence-aware risk forecasting.
           </div>
 
           {/* Fallback notice */}
           {!metrics && !allMetrics.length && (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-10
-                            text-center text-gray-500">
-              <div className="text-4xl mb-3">📊</div>
-              <p>
-                No evaluation metrics yet.<br />
-                Run <code className="text-green-400">python training/evaluate.py</code> to generate them.
+            <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-10
+                            text-center text-[var(--text-muted)] shadow-sm">
+              <div className="w-12 h-12 rounded-full bg-[var(--bg-surface-elevated)] border border-[var(--border-color)] flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-3 text-sm font-bold mx-auto">
+                DSS
+              </div>
+              <p className="text-xs">
+                No evaluation metrics recorded.<br />
+                Run <code className="text-emerald-600 dark:text-emerald-400 font-mono">python training/evaluate.py</code> to generate verification metrics.
               </p>
             </div>
           )}

@@ -84,30 +84,30 @@ export default function RiskPrediction() {
     : [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Risk Prediction</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Manually enter sensor readings to get an instant AI risk prediction
+    <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="pb-4 border-b border-[var(--border-color)]">
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Risk Prediction Engine</h1>
+        <p className="text-[var(--text-muted)] text-xs mt-1">
+          Simulate microclimate variations or verify risk thresholds with manual telemetry parameter inputs
         </p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* ── Input form ─────────────────────────────── */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+        <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-6 shadow-sm">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-medium text-gray-300 uppercase tracking-wide">
-              Sensor Readings
+            <h2 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+              Simulated Telemetry Inputs
             </h2>
             <div className="flex gap-2">
               {["low", "default", "high"].map((p) => (
                 <button
                   key={p}
                   onClick={() => handlePreset(p)}
-                  className="text-xs px-3 py-1 rounded-full bg-gray-800 hover:bg-gray-700
-                             text-gray-400 hover:text-white border border-gray-700 transition-colors"
+                  className="text-xs px-3 py-1 rounded-md bg-[var(--bg-surface-elevated)] hover:bg-[var(--border-color)]
+                             text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer font-medium"
                 >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {p.charAt(0).toUpperCase() + p.slice(1)} Preset
                 </button>
               ))}
             </div>
@@ -116,9 +116,9 @@ export default function RiskPrediction() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {FIELDS.map(({ key, label, min, max, step }) => (
               <div key={key}>
-                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
                   <label htmlFor={key}>{label}</label>
-                  <span className="font-mono text-white">{form[key]}</span>
+                  <span className="font-mono text-[var(--text-primary)] font-semibold">{form[key]}</span>
                 </div>
                 <input
                   id={key}
@@ -126,9 +126,9 @@ export default function RiskPrediction() {
                   min={min} max={max} step={step}
                   value={form[key]}
                   onChange={(e) => handleChange(key, e.target.value)}
-                  className="w-full accent-green-500 h-2 cursor-pointer"
+                  className="w-full accent-green-600 h-2 cursor-pointer"
                 />
-                <div className="flex justify-between text-xs text-gray-700">
+                <div className="flex justify-between text-[11px] text-[var(--text-muted)]">
                   <span>{min}</span><span>{max}</span>
                 </div>
               </div>
@@ -138,14 +138,14 @@ export default function RiskPrediction() {
             <div className="grid grid-cols-2 gap-4 pt-2">
               {TOGGLES.map(({ key, label, on, off }) => (
                 <div key={key}>
-                  <p className="text-xs text-gray-400 mb-1">{label}</p>
+                  <p className="text-xs text-[var(--text-secondary)] mb-1">{label}</p>
                   <button
                     type="button"
                     onClick={() => handleToggle(key)}
-                    className={`w-full py-2 rounded-lg text-sm font-medium border transition-colors
+                    className={`w-full py-2 rounded-lg text-xs font-semibold border transition-colors cursor-pointer
                                 ${form[key] === 1
-                                  ? "bg-green-700/30 border-green-600 text-green-400"
-                                  : "bg-gray-800 border-gray-700 text-gray-400"
+                                  ? "bg-emerald-600/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+                                  : "bg-[var(--bg-surface-elevated)] border-[var(--border-color)] text-[var(--text-secondary)]"
                                 }`}
                   >
                     {form[key] === 1 ? on : off}
@@ -157,17 +157,17 @@ export default function RiskPrediction() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-900
-                         text-white font-semibold rounded-lg transition-colors flex items-center
-                         justify-center gap-2"
+              className="w-full mt-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:opacity-50
+                         text-white font-semibold rounded-lg text-xs shadow-sm transition-colors flex items-center
+                         justify-center gap-2 cursor-pointer"
             >
               {loading ? (
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10"
                           stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
                 </svg>
-              ) : "🔮 Predict Risk"}
+              ) : "Calculate Risk Prediction"}
             </button>
           </form>
         </div>
@@ -177,32 +177,39 @@ export default function RiskPrediction() {
           {result ? (
             <>
               {/* Main result */}
-              <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 text-center">
-                <p className="text-xs text-gray-500 uppercase tracking-wide mb-4">
-                  Prediction Result
+              <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-6 text-center shadow-sm">
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-4 font-semibold">
+                  Prediction Classification
                 </p>
                 <RiskBadge
                   risk={result.risk_category}
                   confidence={result.confidence}
                   size="lg"
                 />
-                <p className="text-gray-500 text-sm mt-3">
-                  Model: <span className="text-gray-300">{result.model_name}</span>
+                <p className="text-[var(--text-muted)] text-xs mt-3 font-mono">
+                  Engine: <span className="text-[var(--text-primary)] font-semibold">{result.model_name}</span>
                 </p>
               </div>
 
               {/* Probability bar chart */}
-              <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-                <h3 className="text-sm text-gray-400 mb-3">Class Probabilities</h3>
+              <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-5 shadow-sm">
+                <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+                  Class Probability Distribution
+                </h3>
                 <ResponsiveContainer width="100%" height={140}>
                   <BarChart data={barData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-                    <XAxis dataKey="name" tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                    <YAxis domain={[0, 100]} tick={{ fill: "#9ca3af", fontSize: 11 }}
+                    <XAxis dataKey="name" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} />
+                    <YAxis domain={[0, 100]} tick={{ fill: "var(--text-muted)", fontSize: 10 }}
                            tickFormatter={(v) => `${v}%`} />
                     <Tooltip
                       formatter={(v) => [`${v}%`, "Probability"]}
-                      contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151",
-                                      borderRadius: "8px", color: "#e5e7eb" }}
+                      contentStyle={{
+                        backgroundColor: "var(--bg-surface-elevated)",
+                        border: "1px solid var(--border-color)",
+                        borderRadius: "6px",
+                        color: "var(--text-primary)",
+                        fontSize: "12px",
+                      }}
                     />
                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                       {barData.map((entry, i) => (
@@ -218,20 +225,22 @@ export default function RiskPrediction() {
                 alert={{
                   risk_category:   result.risk_category,
                   message:         result.risk_category === "High"
-                                     ? "⚠ High risk — take immediate action"
-                                     : `${result.risk_category} risk conditions detected`,
+                                     ? "Critical Spoilage Risk Condition"
+                                     : `${result.risk_category} risk microclimate detected`,
                   recommendations: result.recommendations,
                   timestamp:       result.timestamp,
                 }}
               />
             </>
           ) : (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-10
-                            flex flex-col items-center justify-center text-center h-full">
-              <div className="text-5xl mb-4">🔮</div>
-              <p className="text-gray-500">
-                Adjust the sensor sliders and click<br/>
-                <span className="text-green-400">Predict Risk</span> to see the result
+            <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-10
+                            flex flex-col items-center justify-center text-center h-full shadow-sm">
+              <div className="w-12 h-12 rounded-full bg-[var(--bg-surface-elevated)] border border-[var(--border-color)] flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-3 text-lg font-bold">
+                DSS
+              </div>
+              <p className="text-[var(--text-muted)] text-xs leading-relaxed">
+                Adjust sensor parameters on the left and select<br/>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Calculate Risk Prediction</span> to evaluate storage conditions.
               </p>
             </div>
           )}

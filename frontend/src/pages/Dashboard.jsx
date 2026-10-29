@@ -101,34 +101,34 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--border-color)]">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
             Storage Risk Monitoring Dashboard
           </h1>
-          <p className="text-slate-400 text-xs mt-1">
+          <p className="text-[var(--text-muted)] text-xs mt-1">
             Real-time multi-sensor telemetry, temporal trend analysis, and adaptive risk classification
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Silo Selector */}
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-slate-200">
-            <FiLayers className="text-emerald-400" />
-            <span className="font-semibold text-slate-400">Unit:</span>
+          <div className="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-color)] px-3 py-1.5 rounded-lg text-xs text-[var(--text-primary)]">
+            <FiLayers className="text-emerald-600 dark:text-emerald-400" />
+            <span className="font-semibold text-[var(--text-muted)]">Unit:</span>
             <select
               value={selectedUnit}
               onChange={(e) => setSelectedUnit(e.target.value)}
-              className="bg-transparent border-none text-xs text-slate-100 font-semibold focus:outline-none"
+              className="bg-transparent border-none text-xs text-[var(--text-primary)] font-semibold focus:outline-none cursor-pointer"
             >
               {units.length > 0 ? (
                 units.map((u) => (
-                  <option key={u.unit_id} value={u.unit_id} className="bg-slate-900 text-slate-100">
+                  <option key={u.unit_id} value={u.unit_id} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                     {u.name} ({u.unit_id})
                   </option>
                 ))
               ) : (
-                <option value="silo-1" className="bg-slate-900 text-slate-100">Main Silo (silo-1)</option>
+                <option value="silo-1" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Main Silo (silo-1)</option>
               )}
             </select>
           </div>
@@ -136,7 +136,7 @@ export default function Dashboard() {
           <button
             onClick={refreshData}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-md shadow-emerald-600/20 transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-sm transition"
           >
             <FiRefreshCw className={loading ? "animate-spin" : ""} /> Refresh
           </button>
@@ -149,35 +149,35 @@ export default function Dashboard() {
           title="Internal Temperature"
           value={formatSensor(sensorData?.temperature_c)}
           unit="°C"
-          icon={<FiThermometer className="text-rose-400" />}
+          icon={<FiThermometer className="text-rose-500 dark:text-rose-400" />}
           loading={loading}
         />
         <SensorCard
           title="Relative Humidity"
           value={formatSensor(sensorData?.humidity_pct)}
           unit="%"
-          icon={<FiDroplet className="text-blue-400" />}
+          icon={<FiDroplet className="text-blue-500 dark:text-blue-400" />}
           loading={loading}
         />
         <SensorCard
           title="CO2 / Gas Concentration"
           value={formatSensor(sensorData?.gas_concentration, "", 0)}
           unit="ppm"
-          icon={<FiWind className="text-amber-400" />}
+          icon={<FiWind className="text-amber-500 dark:text-amber-400" />}
           loading={loading}
         />
         <SensorCard
           title="Grain Moisture"
           value={formatSensor(sensorData?.grain_moisture)}
           unit="%"
-          icon={<GiGrain className="text-emerald-400" />}
+          icon={<GiGrain className="text-emerald-600 dark:text-emerald-400" />}
           loading={loading}
         />
       </div>
 
       {/* Real-time Trend Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-5 shadow-sm">
           <SensorChart
             title="Temperature Profile (°C)"
             data={chartHistory}
@@ -185,7 +185,7 @@ export default function Dashboard() {
             height={220}
           />
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-5 shadow-sm">
           <SensorChart
             title="Relative Humidity Profile (%)"
             data={chartHistory}
@@ -197,69 +197,69 @@ export default function Dashboard() {
 
       {/* Risk Assessment & DSS Recommendations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-          <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-5 space-y-3 shadow-sm">
+          <h2 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
             Predicted Spoilage Risk
           </h2>
           <div className="flex items-center gap-3">
             <span
               className={`px-3 py-1.5 rounded-lg text-sm font-bold uppercase tracking-wider ${
                 risk === "High"
-                  ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
+                  ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30"
                   : risk === "Moderate"
-                  ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                  : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                  : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
               }`}
             >
               {risk} Risk
             </span>
             {prediction?.confidence != null && (
-              <span className="text-xs text-slate-400 font-mono">
+              <span className="text-xs text-[var(--text-muted)] font-mono">
                 {(prediction.confidence * 100).toFixed(1)}% Confidence
               </span>
             )}
           </div>
-          <p className="text-[11px] text-slate-500 font-mono">
+          <p className="text-[11px] text-[var(--text-muted)] font-mono">
             Evaluated by AR-TCN Model (Temporal Receptive Field)
           </p>
         </div>
 
-        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-2">
-          <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+        <div className="lg:col-span-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-5 space-y-2 shadow-sm">
+          <h2 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
             Decision Support System (DSS) Recommended Actions
           </h2>
           {recommendations.length > 0 ? (
-            <ul className="space-y-1.5 text-xs text-slate-300">
+            <ul className="space-y-1.5 text-xs text-[var(--text-secondary)]">
               {recommendations.slice(0, 4).map((item, idx) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <span className="text-emerald-400 font-bold">•</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">•</span>
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-slate-500">Storage microclimate is stable. Continue routine monitoring.</p>
+            <p className="text-xs text-[var(--text-muted)]">Storage microclimate is stable. Continue routine monitoring.</p>
           )}
         </div>
       </div>
 
       {/* Storage Unit Incidents & Alert Records */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-[var(--border-color)] flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <FiAlertTriangle className="text-amber-400" />
-            <span className="text-sm font-semibold text-slate-200">
+            <FiAlertTriangle className="text-amber-500" />
+            <span className="text-sm font-semibold text-[var(--text-primary)]">
               Storage Unit Alert Log ({selectedUnit})
             </span>
           </div>
-          <span className="text-[11px] text-slate-500 font-mono">
+          <span className="text-[11px] text-[var(--text-muted)] font-mono">
             Last Updated: {lastUpdated ? formatTimestamp(lastUpdated) : "—"}
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]">
+          <table className="w-full text-left text-xs text-[var(--text-secondary)]">
+            <thead className="bg-[var(--bg-surface-elevated)] border-b border-[var(--border-color)] text-[var(--text-secondary)] uppercase tracking-wider text-[10px]">
               <tr>
                 <th className="p-3">Timestamp</th>
                 <th className="p-3">Risk Level</th>
@@ -268,21 +268,21 @@ export default function Dashboard() {
                 <th className="p-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-[var(--border-color)]">
               {alerts.length > 0 ? (
                 alerts.slice(0, 5).map((a, idx) => (
-                  <tr key={idx} className="hover:bg-slate-800/40">
-                    <td className="p-3 font-mono text-slate-400">
+                  <tr key={idx} className="hover:bg-[var(--bg-surface-elevated)]">
+                    <td className="p-3 font-mono text-[var(--text-muted)]">
                       {a.timestamp ? formatTimestamp(a.timestamp) : "—"}
                     </td>
                     <td className="p-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30">
                         {a.level || a.risk_category || "HIGH"}
                       </span>
                     </td>
-                    <td className="p-3 text-slate-200">{a.message || "High risk condition detected"}</td>
+                    <td className="p-3 text-[var(--text-primary)]">{a.message || "High risk condition detected"}</td>
                     <td className="p-3">
-                      <span className={`text-[11px] ${a.acknowledged ? "text-emerald-400" : "text-amber-400"}`}>
+                      <span className={`text-[11px] ${a.acknowledged ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
                         {a.acknowledged ? `Acknowledged by ${a.acknowledged_by || "Admin"}` : "Unacknowledged"}
                       </span>
                     </td>
@@ -291,19 +291,19 @@ export default function Dashboard() {
                         <button
                           onClick={() => handleAcknowledge(a.id)}
                           disabled={a.acknowledged}
-                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded text-[11px] text-slate-200 flex items-center gap-1 ml-auto"
+                          className="px-2 py-1 bg-[var(--bg-surface-elevated)] hover:bg-[var(--border-color)] disabled:opacity-40 rounded text-[11px] text-[var(--text-primary)] flex items-center gap-1 ml-auto cursor-pointer"
                         >
-                          <FiCheck className="text-emerald-400" /> {a.acknowledged ? "Acknowledged" : "Acknowledge"}
+                          <FiCheck className="text-emerald-600 dark:text-emerald-400" /> {a.acknowledged ? "Acknowledged" : "Acknowledge"}
                         </button>
                       ) : (
-                        <span className="text-[10px] text-slate-500 italic">Read-Only</span>
+                        <span className="text-[10px] text-[var(--text-muted)] italic">Read-Only</span>
                       )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-slate-500">
+                  <td colSpan={5} className="p-4 text-center text-[var(--text-muted)]">
                     No active high-risk alerts recorded for this silo.
                   </td>
                 </tr>
