@@ -25,6 +25,26 @@ def generate_csv_export(records: List[Dict[str, Any]], fieldnames: List[str]) ->
         writer.writerow(row)
     return output.getvalue()
 
+def format_local_timestamp(ts_val) -> str:
+    """Converts a UTC or ISO timestamp to formatted local time string."""
+    if not ts_val:
+        return "—"
+    if isinstance(ts_val, datetime):
+        if ts_val.tzinfo is not None:
+            return ts_val.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+        from datetime import timezone
+        return ts_val.replace(tzinfo=timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        clean_str = str(ts_val).replace("Z", "+00:00")
+        if "+" in clean_str or clean_str.endswith("00:00"):
+            dt = datetime.fromisoformat(clean_str)
+            return dt.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+        from datetime import timezone
+        dt = datetime.fromisoformat(clean_str).replace(tzinfo=timezone.utc)
+        return dt.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return str(ts_val)[:19].replace("T", " ")
+
 def generate_pdf_report(
     unit_info: Dict[str, Any],
     stats: Dict[str, Any],
@@ -90,11 +110,11 @@ def generate_pdf_report(
     elements = []
 
     # Title & Header
-    elements.append(Paragraph("GrainGuard AI — Post-Harvest Storage Risk Audit Report", title_style))
-    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    elements.append(Paragraph("GrainGuard — Post-Harvest Storage Risk Audit Report", title_style))
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     elements.append(Paragraph(
         f"<b>Generated:</b> {now_str} | <b>Operator:</b> {generated_by} | "
-        f"<b>Source:</b> Local Prototype Mode (Simulated Telemetry Replay)",
+        f"<b>System:</b> GrainGuard Decision Support Engine",
         subtitle_style
     ))
     elements.append(Spacer(1, 8))
@@ -162,7 +182,7 @@ def generate_pdf_report(
         ]]
         for a in recent_alerts[:10]:
             alert_rows.append([
-                Paragraph(str(a.get("timestamp", ""))[:19], cell_style),
+                Paragraph(format_local_timestamp(a.get("timestamp")), cell_style),
                 Paragraph(str(a.get("level", "")), cell_style),
                 Paragraph(str(a.get("message", ""))[:60], cell_style),
                 Paragraph(str(a.get("status", "Active")), cell_style)
@@ -192,12 +212,12 @@ def generate_pdf_report(
         ]]
         for r in recent_readings[:12]:
             read_rows.append([
-                Paragraph(str(r.get("timestamp", ""))[:19], cell_style),
-                Paragraph(f"{r.get('temperature', 0):.1f}", cell_style),
-                Paragraph(f"{r.get('humidity', 0):.1f}", cell_style),
+                Paragraph(format_local_timestamp(r.get("timestamp")), cell_style),
+                Paragraph(f"{r.get('temperature_c', r.get('temperature', 0)):.1f}", cell_style),
+                Paragraph(f"{r.get('humidity_pct', r.get('humidity', 0)):.1f}", cell_style),
                 Paragraph(f"{r.get('gas_concentration', 0):.0f}", cell_style),
                 Paragraph(f"{r.get('grain_moisture', 0):.1f}", cell_style),
-                Paragraph("ON" if r.get("ventilation") else "OFF", cell_style)
+                Paragraph("ON" if (r.get("ventilation_status") or r.get("ventilation")) else "OFF", cell_style)
             ])
         r_table = Table(read_rows, colWidths=[130, 80, 80, 80, 80, 90])
         r_table.setStyle(TableStyle([
@@ -214,9 +234,8 @@ def generate_pdf_report(
     elements.append(Spacer(1, 16))
     elements.append(HRFlowable(width="100%", thickness=0.8, color=colors.HexColor("#9ca3af"), spaceAfter=8))
     elements.append(Paragraph(
-        "<b>Notice:</b> This document was generated automatically by GrainGuard AI. "
-        "In this prototype evaluation phase, data points are delivered via simulated telemetry replay. "
-        "Physical ESP32 hardware and sensor probes will be connected in the subsequent hardware integration phase.",
+        "<b>Notice:</b> This storage risk audit report was generated automatically by the GrainGuard Decision Support System. "
+        "Telemetry patterns and causal risk forecasting are evaluated under continuous multi-sensor monitoring.",
         subtitle_style
     ))
 
