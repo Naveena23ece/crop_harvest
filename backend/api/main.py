@@ -215,7 +215,7 @@ async def predict_single(
     """
     try:
         predictor = get_predictor()
-        result    = predictor.predict_single(reading.dict())
+        result    = predictor.predict_single(reading.dict(), is_telemetry=False)
 
         # Persist to Firebase in background (non-blocking)
         background_tasks.add_task(_persist_prediction, result)
@@ -279,7 +279,7 @@ async def get_latest_risk(
                     data_source = "simulated_telemetry"
 
         predictor = get_predictor()
-        result    = predictor.predict_single(sensor_data)
+        result    = predictor.predict_single(sensor_data, is_telemetry=True)
 
         background_tasks.add_task(_persist_prediction, result)
 

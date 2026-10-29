@@ -85,9 +85,14 @@ class GrainRiskPredictor:
         self.scaler         = None
         self.label_encoder  = None
         self.feature_cols   = None
-        self._history_buffer: deque = deque(maxlen=SEQUENCE_LENGTH)
+        self._telemetry_buffer: deque = deque(maxlen=SEQUENCE_LENGTH)
         self._loaded        = False
         self._model_info    = {}
+
+    @property
+    def _history_buffer(self) -> deque:
+        """Alias for backward compatibility."""
+        return self._telemetry_buffer
 
     def load(self, models_dir: str = MODELS_DIR) -> bool:
         """Loads all model artifacts from disk. Returns True on success."""
@@ -138,15 +143,41 @@ class GrainRiskPredictor:
             self._loaded = False
             return False
 
-    def _engineer_single(self, sensor_data: Dict) -> np.ndarray:
+    def _engineer_single(
+        self,
+        sensor_data: Dict,
+        history_buffer: Optional[List[List[float]]] = None,
+        ref_time: Optional[datetime] = None,
+    ) -> np.ndarray:
         """
         Applies feature engineering to a single sensor reading dict.
         Returns a 1D numpy array of engineered features.
-        Note: Rolling/lag features are filled from the history buffer.
+
+        - If `ref_time` is provided, it is used for cyclic temporal encoding.
+        - If `ref_time` is None, checks sensor_data for "timestamp"; if missing,
+          uses a fixed nominal reference time (NOMINAL_REFERENCE_DATETIME) to ensure
+          100% deterministic manual inference across different times of day.
+        - If `history_buffer` is None, computes rolling and lag features under steady-state
+          assumptions (isolated single-point evaluation: std=0, diff=0, lags=current value).
         """
         import math
 
-        now = datetime.now()
+        # ── Deterministic timestamp resolution ────────────────────────────
+        nominal_ref = datetime(2025, 6, 15, 12, 0, 0)
+        if ref_time is not None:
+            now = ref_time
+        elif sensor_data.get("timestamp"):
+            ts_val = sensor_data["timestamp"]
+            if isinstance(ts_val, datetime):
+                now = ts_val
+            else:
+                try:
+                    now = datetime.fromisoformat(str(ts_val).replace("Z", "+00:00"))
+                except Exception:
+                    now = nominal_ref
+        else:
+            now = nominal_ref
+
         doy = now.timetuple().tm_yday
         hr  = now.hour
         mo  = now.month
@@ -195,54 +226,85 @@ class GrainRiskPredictor:
             heat_idx,            # heat_index (Rothfusz equation matching preprocess.py)
         ]
 
-        # Rolling from buffer (mean / std of last 4 readings)
-        buf = list(self._history_buffer)
-        for col_idx, col in enumerate(["temperature_c","humidity_pct","gas_concentration","grain_moisture"]):
-            vals_4  = [b[col_idx] for b in buf[-4:]]  if buf else [row[col_idx]]
-            vals_12 = [b[col_idx] for b in buf[-12:]] if buf else [row[col_idx]]
-            row += [
-                float(np.mean(vals_4)),
-                float(np.std(vals_4)) if len(vals_4) > 1 else 0.0,
-                float(np.mean(vals_12)),
-            ]
-
-        # Lag features (1, 2, 4, 8)
-        for col_idx in range(4):      # temp, humidity, gas, moisture
-            for lag in [1, 2, 4, 8]:
-                if len(buf) >= lag:
-                    row.append(buf[-lag][col_idx])
-                else:
+        # ── Rolling, Lag, and Diff features ──────────────────────────────
+        if history_buffer is None:
+            # Steady-state assumption for isolated single-reading evaluation:
+            # The silo is evaluated at steady state under the given conditions.
+            for col_idx in range(4):  # temp, humidity, gas, moisture
+                row += [
+                    row[col_idx],     # roll_mean_4
+                    0.0,              # roll_std_4
+                    row[col_idx],     # roll_mean_12
+                ]
+            for col_idx in range(4):  # temp, humidity, gas, moisture
+                for _ in [1, 2, 4, 8]:
                     row.append(row[col_idx])
+            for col_idx in range(3):  # temp, humidity, gas
+                row += [0.0, 0.0]     # diff1, diff4
+        else:
+            buf = history_buffer
+            for col_idx in range(4):  # temp, humidity, gas, moisture
+                vals_4  = [b[col_idx] for b in buf[-4:]]  if buf else [row[col_idx]]
+                vals_12 = [b[col_idx] for b in buf[-12:]] if buf else [row[col_idx]]
+                row += [
+                    float(np.mean(vals_4)),
+                    float(np.std(vals_4)) if len(vals_4) > 1 else 0.0,
+                    float(np.mean(vals_12)),
+                ]
 
-        # Diff features
-        for col_idx in range(3):      # temp, humidity, gas
-            prev1 = buf[-1][col_idx]  if buf else row[col_idx]
-            prev4 = buf[-4][col_idx]  if len(buf) >= 4 else row[col_idx]
-            row += [row[col_idx] - prev1, row[col_idx] - prev4]
+            for col_idx in range(4):  # temp, humidity, gas, moisture
+                for lag in [1, 2, 4, 8]:
+                    if len(buf) >= lag:
+                        row.append(buf[-lag][col_idx])
+                    else:
+                        row.append(row[col_idx])
 
-        # Column 60: placeholder for '_label' (target column present in feature_cols.pkl / scaler)
+            for col_idx in range(3):  # temp, humidity, gas
+                prev1 = buf[-1][col_idx]  if buf else row[col_idx]
+                prev4 = buf[-4][col_idx]  if len(buf) >= 4 else row[col_idx]
+                row += [row[col_idx] - prev1, row[col_idx] - prev4]
+
+        # Column 60: placeholder for '_label' (maintains 61-feature AR-TCN compatibility)
         if self.feature_cols and len(row) < len(self.feature_cols):
             row.append(0.0)
 
         return np.array(row, dtype=np.float32)
 
-    def _update_buffer(self, sensor_data: Dict) -> None:
-        """Appends core sensor values to the sliding window buffer."""
+    def _update_telemetry_buffer(self, sensor_data: Dict) -> None:
+        """Appends core sensor values to the live telemetry sliding window buffer."""
         core = [
             float(sensor_data.get("temperature_c",    27.0)),
             float(sensor_data.get("humidity_pct",     60.0)),
             float(sensor_data.get("gas_concentration",450.0)),
             float(sensor_data.get("grain_moisture",   12.0)),
         ]
-        self._history_buffer.append(core)
+        self._telemetry_buffer.append(core)
 
-    def predict_single(self, sensor_data: Dict) -> Dict:
+    def predict_single(self, sensor_data: Dict, is_telemetry: bool = False) -> Dict:
         """
         Makes a prediction from a single sensor reading.
-        Internally builds a sequence by padding with history buffer.
+        
+        Args:
+            sensor_data: Dictionary of sensor readings.
+            is_telemetry: If True, updates the live telemetry buffer and computes
+                          rolling/lag features from continuous telemetry.
+                          If False (default for manual predictions), computes
+                          stateless steady-state features with a fixed reference time,
+                          guaranteeing 100% deterministic repeatability.
         """
-        self._update_buffer(sensor_data)
-        feature_vec = self._engineer_single(sensor_data)
+        if is_telemetry:
+            self._update_telemetry_buffer(sensor_data)
+            feature_vec = self._engineer_single(
+                sensor_data,
+                history_buffer=list(self._telemetry_buffer),
+                ref_time=None,
+            )
+        else:
+            feature_vec = self._engineer_single(
+                sensor_data,
+                history_buffer=None,
+                ref_time=datetime(2025, 6, 15, 12, 0, 0),
+            )
 
         if self._loaded:
             return self._predict_with_model([feature_vec] * SEQUENCE_LENGTH, sensor_data)
@@ -252,7 +314,8 @@ class GrainRiskPredictor:
     def predict_sequence(self, sequence: List[Dict]) -> Dict:
         """
         Makes a prediction from a full sequence of sensor readings.
-        `sequence` should have exactly SEQUENCE_LENGTH readings.
+        `sequence` should have up to SEQUENCE_LENGTH readings.
+        Maintains an isolated sequence context to prevent buffer contamination.
         """
         if len(sequence) < SEQUENCE_LENGTH:
             # Pad with repeats of the first reading
@@ -262,9 +325,17 @@ class GrainRiskPredictor:
             sequence = sequence[-SEQUENCE_LENGTH:]
 
         feature_vecs = []
+        seq_buf = []
         for s in sequence:
-            self._update_buffer(s)
-            feature_vecs.append(self._engineer_single(s))
+            core = [
+                float(s.get("temperature_c",    27.0)),
+                float(s.get("humidity_pct",     60.0)),
+                float(s.get("gas_concentration",450.0)),
+                float(s.get("grain_moisture",   12.0)),
+            ]
+            seq_buf.append(core)
+            feat = self._engineer_single(s, history_buffer=seq_buf, ref_time=None)
+            feature_vecs.append(feat)
 
         if self._loaded:
             return self._predict_with_model(feature_vecs, sequence[-1])
