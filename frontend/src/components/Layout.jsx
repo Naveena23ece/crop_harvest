@@ -158,19 +158,6 @@ export default function Layout() {
 
       {/* ── Main Application Workspace ──────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-app)]">
-        {/* Telemetry Disclosure Banner */}
-        <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/50 px-4 py-1.5 flex items-center justify-between text-[11px] text-amber-800 dark:text-amber-300">
-          <div className="flex items-center gap-2">
-            <FiInfo className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
-            <span>
-              <b>System Notice:</b> Telemetry is delivered via simulated dataset replay (Phase 1 Software Prototype). Physical ESP32 hardware and sensor probes will be connected in Phase 2.
-            </span>
-          </div>
-          <span className="hidden sm:inline font-mono text-[10px] text-amber-700/80 dark:text-amber-400/80">
-            Phase 1 Prototype Active
-          </span>
-        </div>
-
         {/* Topbar Header */}
         <header className="flex items-center justify-between px-4 sm:px-6 py-2.5 bg-[var(--bg-surface)] border-b border-[var(--border-color)] flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -200,15 +187,10 @@ export default function Layout() {
             </div>
           </div>
 
-          {/* Right Header Utilities: ThemeToggle, Timestamp, Connection Dot, Sign Out */}
+          {/* Right Header Utilities: ThemeToggle, Timestamp, Sign Out */}
           <div className="flex items-center gap-3 text-xs">
             <div className="hidden sm:flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-muted)]">
               <span>{now.toUTCString().replace("GMT", "UTC")}</span>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-color)] text-[11px] text-[var(--text-secondary)]">
-              <span className="connection-dot"></span>
-              <span>Backend Ready</span>
             </div>
 
             {/* Global Theme Toggle */}

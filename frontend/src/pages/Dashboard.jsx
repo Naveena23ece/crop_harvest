@@ -112,27 +112,6 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Silo Selector */}
-          <div className="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-color)] px-3 py-1.5 rounded-lg text-xs text-[var(--text-primary)]">
-            <FiLayers className="text-emerald-600 dark:text-emerald-400" />
-            <span className="font-semibold text-[var(--text-muted)]">Unit:</span>
-            <select
-              value={selectedUnit}
-              onChange={(e) => setSelectedUnit(e.target.value)}
-              className="bg-transparent border-none text-xs text-[var(--text-primary)] font-semibold focus:outline-none cursor-pointer"
-            >
-              {units.length > 0 ? (
-                units.map((u) => (
-                  <option key={u.unit_id} value={u.unit_id} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
-                    {u.name} ({u.unit_id})
-                  </option>
-                ))
-              ) : (
-                <option value="silo-1" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Main Silo (silo-1)</option>
-              )}
-            </select>
-          </div>
-
           <button
             onClick={refreshData}
             disabled={loading}
