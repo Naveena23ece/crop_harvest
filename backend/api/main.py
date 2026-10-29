@@ -209,12 +209,15 @@ class NotificationSettingsRequest(BaseModel):
     telegram_enabled:  bool
     telegram_bot_token: Optional[str] = None
     telegram_chat_id:  str
+    whatsapp_enabled:  Optional[bool] = False
+    whatsapp_phone:    Optional[str] = ""
+    whatsapp_apikey:   Optional[str] = None
     min_risk_level:    str = "High"
     cooldown_minutes:  int = 15
 
 
 class NotificationTestRequest(BaseModel):
-    channel: str = Field(..., description="telegram | email")
+    channel: str = Field(..., description="telegram | email | whatsapp")
     target:  Optional[str] = None
 
 
@@ -444,12 +447,14 @@ async def get_audit_logs(
 async def get_notification_config(admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     """Admin-only: View current notification settings with sensitive credentials masked."""
     settings = get_notification_settings()
-    # Mask password
+    # Mask secrets
     masked = settings.copy()
     masked["smtp_password_configured"] = bool(settings.get("smtp_password"))
     masked["telegram_token_configured"] = bool(settings.get("telegram_bot_token"))
+    masked["whatsapp_apikey_configured"] = bool(settings.get("whatsapp_apikey"))
     masked.pop("smtp_password", None)
     masked.pop("telegram_bot_token", None)
+    masked.pop("whatsapp_apikey", None)
     return {"config": masked}
 
 
@@ -476,11 +481,24 @@ async def update_notification_config(
     if req.telegram_bot_token:
         os.environ["TELEGRAM_BOT_TOKEN"] = req.telegram_bot_token
     config.telegram_chat_id = req.telegram_chat_id
+    if req.whatsapp_enabled is not None:
+        config.whatsapp_enabled = req.whatsapp_enabled
+        os.environ["GRAINGUARD_WHATSAPP_ENABLED"] = str(req.whatsapp_enabled).lower()
+    if req.whatsapp_phone is not None:
+        config.whatsapp_phone = req.whatsapp_phone
+        os.environ["GRAINGUARD_WHATSAPP_PHONE"] = req.whatsapp_phone
+    if req.whatsapp_apikey:
+        config.whatsapp_apikey = req.whatsapp_apikey
+        os.environ["GRAINGUARD_WHATSAPP_APIKEY"] = req.whatsapp_apikey
     config.min_risk_level = req.min_risk_level
     config.cooldown_minutes = req.cooldown_minutes
 
     db.commit()
-    log_audit(db, admin.username, "UPDATE_NOTIFICATION_CONFIG", "notifications", {"email_enabled": req.email_enabled, "telegram_enabled": req.telegram_enabled}, user_id=admin.id)
+    log_audit(db, admin.username, "UPDATE_NOTIFICATION_CONFIG", "notifications", {
+        "email_enabled": req.email_enabled,
+        "telegram_enabled": req.telegram_enabled,
+        "whatsapp_enabled": req.whatsapp_enabled
+    }, user_id=admin.id)
     return {"message": "Notification configuration updated successfully."}
 
 

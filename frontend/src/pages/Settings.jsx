@@ -64,6 +64,9 @@ export default function Settings() {
     telegram_enabled: false,
     telegram_bot_token: "",
     telegram_chat_id: "",
+    whatsapp_enabled: false,
+    whatsapp_phone: "",
+    whatsapp_apikey: "",
     min_risk_level: "High",
     cooldown_minutes: 15,
   });
@@ -678,6 +681,61 @@ export default function Settings() {
                         className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs text-slate-200 flex items-center gap-1.5"
                       >
                         <FiSend /> {testingChannel === "email" ? "Sending..." : "Test Email Alert"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* WhatsApp (CallMeBot Free API) */}
+                  <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                        💬 WhatsApp Alert Dispatcher (CallMeBot Free API)
+                      </span>
+                      <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={notifConfig.whatsapp_enabled || false}
+                          onChange={(e) => setNotifConfig({ ...notifConfig, whatsapp_enabled: e.target.checked })}
+                          className="rounded text-emerald-600 focus:ring-0"
+                        />
+                        Enable WhatsApp Alerts
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      100% Free real-time WhatsApp alerts delivered to your phone without paid SMS gateways or extra hardware.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] text-slate-400 block mb-1">Target Phone Number (with Country Code)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. +919876543210"
+                          value={notifConfig.whatsapp_phone || ""}
+                          onChange={(e) => setNotifConfig({ ...notifConfig, whatsapp_phone: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-slate-400 block mb-1">
+                          CallMeBot API Key {notifConfig.whatsapp_apikey_configured && <span className="text-emerald-400 text-[10px]">(Configured)</span>}
+                        </label>
+                        <input
+                          type="password"
+                          placeholder={notifConfig.whatsapp_apikey_configured ? "•••••••• (Leave blank to keep current)" : "e.g. 123456"}
+                          value={notifConfig.whatsapp_apikey || ""}
+                          onChange={(e) => setNotifConfig({ ...notifConfig, whatsapp_apikey: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleTestNotification("whatsapp")}
+                        disabled={testingChannel === "whatsapp"}
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 rounded text-xs text-slate-200 flex items-center gap-1.5"
+                      >
+                        <FiSend /> {testingChannel === "whatsapp" ? "Sending..." : "Test WhatsApp Alert"}
                       </button>
                     </div>
                   </div>

@@ -190,6 +190,9 @@ class NotificationConfig(Base):
     telegram_enabled = Column(Boolean, default=False, nullable=False)
     telegram_bot_token_env = Column(String(64), default="TELEGRAM_BOT_TOKEN", nullable=False)
     telegram_chat_id = Column(String(64), default="", nullable=False)
+    whatsapp_enabled = Column(Boolean, default=False, nullable=True)
+    whatsapp_phone = Column(String(32), default="", nullable=True)
+    whatsapp_apikey = Column(String(64), default="", nullable=True)
     min_risk_level = Column(String(16), default="High", nullable=False)
     cooldown_minutes = Column(Integer, default=15, nullable=False)
     last_sent_at = Column(DateTime, nullable=True)
@@ -203,6 +206,8 @@ class NotificationConfig(Base):
             "smtp_user": self.smtp_user,
             "telegram_enabled": self.telegram_enabled,
             "telegram_chat_id": self.telegram_chat_id,
+            "whatsapp_enabled": bool(self.whatsapp_enabled),
+            "whatsapp_phone": self.whatsapp_phone or "",
             "min_risk_level": self.min_risk_level,
             "cooldown_minutes": self.cooldown_minutes,
             "last_sent_at": self.last_sent_at.isoformat() if self.last_sent_at else None,

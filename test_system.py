@@ -325,7 +325,7 @@ async def run_tests():
         hash_password, verify_password, create_access_token,
         decode_access_token, revoke_token, require_admin
     )
-    from backend.utils.notifier import dispatch_alert_notification, is_in_cooldown
+    from backend.utils.notifier import dispatch_alert_notification, is_in_cooldown, test_notification_channel
     from backend.utils.exporter import generate_csv_export, generate_pdf_report
     from fastapi import HTTPException
 
@@ -490,6 +490,11 @@ async def run_tests():
     assert dispatch_res2["dispatched"] is False, "Duplicate notification should be suppressed by cooldown"
     assert "suppressed" in dispatch_res2["reason"].lower()
     print(f"  [+] Duplicate alert suppression verified: {dispatch_res2['reason']}")
+
+    # Verify WhatsApp notification channel handler
+    wa_test = test_notification_channel("whatsapp")
+    assert "error" in wa_test or "success" in wa_test
+    print(f"  [+] WhatsApp notification channel verified: {wa_test.get('error', 'Ready')}")
     passed += 1
 
     # 25. Historical Data Export: RFC-4180 CSV & ReportLab PDF

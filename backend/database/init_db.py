@@ -165,7 +165,21 @@ def _init_storage_units(db):
 
 
 def _init_notification_config(db):
-    """Ensures a default notification configuration row exists."""
+    """Ensures a default notification configuration row exists and schema columns are present."""
+    try:
+        from sqlalchemy import text
+        conn = db.connection()
+        col_tuples = conn.execute(text("PRAGMA table_info(notification_configs)")).fetchall()
+        col_names = [c[1] for c in col_tuples]
+        if "whatsapp_enabled" not in col_names:
+            conn.execute(text("ALTER TABLE notification_configs ADD COLUMN whatsapp_enabled BOOLEAN DEFAULT 0"))
+        if "whatsapp_phone" not in col_names:
+            conn.execute(text("ALTER TABLE notification_configs ADD COLUMN whatsapp_phone VARCHAR(32) DEFAULT ''"))
+        if "whatsapp_apikey" not in col_names:
+            conn.execute(text("ALTER TABLE notification_configs ADD COLUMN whatsapp_apikey VARCHAR(64) DEFAULT ''"))
+    except Exception as e:
+        logger.warning(f"Could not auto-migrate notification_configs columns: {e}")
+
     config = db.query(NotificationConfig).first()
     if not config:
         default_config = NotificationConfig(
@@ -178,6 +192,9 @@ def _init_notification_config(db):
             telegram_enabled=False,
             telegram_bot_token_env="TELEGRAM_BOT_TOKEN",
             telegram_chat_id="",
+            whatsapp_enabled=False,
+            whatsapp_phone="",
+            whatsapp_apikey="",
             min_risk_level="High",
             cooldown_minutes=15,
         )

@@ -17,6 +17,7 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
 import urllib.request
+import urllib.parse
 import json
 
 from backend.database.db import SessionLocal
@@ -42,6 +43,9 @@ def get_notification_settings() -> Dict[str, Any]:
         "telegram_enabled": os.getenv("GRAINGUARD_TELEGRAM_ENABLED", "false").lower() == "true",
         "telegram_bot_token": os.getenv("GRAINGUARD_TELEGRAM_BOT_TOKEN", ""),
         "telegram_chat_id": os.getenv("GRAINGUARD_TELEGRAM_CHAT_ID", ""),
+        "whatsapp_enabled": os.getenv("GRAINGUARD_WHATSAPP_ENABLED", "false").lower() == "true",
+        "whatsapp_phone": os.getenv("GRAINGUARD_WHATSAPP_PHONE", ""),
+        "whatsapp_apikey": os.getenv("GRAINGUARD_WHATSAPP_APIKEY", ""),
         "min_risk_level": os.getenv("GRAINGUARD_NOTIFY_MIN_RISK", "High"),
         "cooldown_minutes": int(os.getenv("GRAINGUARD_NOTIFY_COOLDOWN_MIN", "15")),
     }
@@ -67,6 +71,12 @@ def get_notification_settings() -> Dict[str, Any]:
                 "min_risk_level": db_config.min_risk_level or settings["min_risk_level"],
                 "cooldown_minutes": db_config.cooldown_minutes or settings["cooldown_minutes"],
             })
+            if hasattr(db_config, "whatsapp_enabled") and db_config.whatsapp_enabled is not None:
+                settings["whatsapp_enabled"] = db_config.whatsapp_enabled
+            if hasattr(db_config, "whatsapp_phone") and db_config.whatsapp_phone:
+                settings["whatsapp_phone"] = db_config.whatsapp_phone
+            if hasattr(db_config, "whatsapp_apikey") and db_config.whatsapp_apikey:
+                settings["whatsapp_apikey"] = db_config.whatsapp_apikey
         db.close()
     except Exception as e:
         logger.warning(f"Could not load NotificationConfig from DB: {e}")
@@ -134,6 +144,34 @@ def send_smtp_email(server: str, port: int, user: str, password: str, recipients
             s.sendmail(user, recipient_list, msg.as_string())
         
         return {"success": True, "recipients": recipient_list}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def send_whatsapp_message(phone: str, apikey: str, message: str) -> Dict[str, Any]:
+    """
+    Send WhatsApp alert via CallMeBot free community API.
+    CallMeBot sends direct WhatsApp messages via standard HTTPS GET.
+    """
+    if not phone or not apikey:
+        return {"success": False, "error": "WhatsApp Phone Number or CallMeBot API Key not configured"}
+    
+    clean_phone = phone.strip().replace(" ", "").replace("-", "")
+    if clean_phone.startswith("+"):
+        clean_phone = clean_phone[1:]
+    
+    encoded_text = urllib.parse.quote(message)
+    url = f"https://api.callmebot.com/whatsapp.php?phone={clean_phone}&text={encoded_text}&apikey={apikey.strip()}"
+    
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "GrainGuard-AI/2.0 (Agricultural Storage DSS)"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            body = resp.read().decode("utf-8")
+            if "error" in body.lower() or "invalid" in body.lower():
+                return {"success": False, "error": body.strip()}
+            return {"success": True, "response": body.strip()}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -248,6 +286,22 @@ def dispatch_alert_notification(
             error_msg=em_res.get("error")
         )
 
+    # WhatsApp dispatch (CallMeBot)
+    if settings["whatsapp_enabled"]:
+        wa_res = send_whatsapp_message(
+            settings["whatsapp_phone"],
+            settings["whatsapp_apikey"],
+            message_body
+        )
+        results["whatsapp"] = wa_res
+        log_notification_attempt(
+            channel="whatsapp",
+            recipient=settings["whatsapp_phone"],
+            subject=f"GrainGuard Risk Alert: {risk_category}",
+            status="sent" if wa_res["success"] else "failed",
+            error_msg=wa_res.get("error")
+        )
+
     record_cooldown(unit_id, risk_category)
     return {
         "dispatched": True,
@@ -296,6 +350,19 @@ def test_notification_channel(channel: str, test_target: Optional[str] = None) -
             test_msg
         )
         log_notification_attempt("email", recipients, "Email Test", "sent" if res["success"] else "failed", res.get("error"))
+        return res
+
+    elif channel.lower() == "whatsapp":
+        phone = test_target or settings["whatsapp_phone"]
+        apikey = settings["whatsapp_apikey"]
+        if not phone or not apikey:
+            log_notification_attempt("whatsapp", phone or "unconfigured", "WhatsApp Test", "failed", "WhatsApp Phone or API Key missing")
+            return {
+                "success": False,
+                "error": "WhatsApp phone number or CallMeBot API Key is not configured. Configure GRAINGUARD_WHATSAPP_PHONE and GRAINGUARD_WHATSAPP_APIKEY."
+            }
+        res = send_whatsapp_message(phone, apikey, test_msg)
+        log_notification_attempt("whatsapp", phone, "WhatsApp Test", "sent" if res["success"] else "failed", res.get("error"))
         return res
 
     return {"success": False, "error": f"Unsupported notification channel '{channel}'"}
