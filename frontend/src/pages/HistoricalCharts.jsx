@@ -15,25 +15,36 @@ import {
 export default function HistoricalCharts() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
   const [limit,   setLimit]   = useState(200);
 
   const fetchData = () => {
     setLoading(true);
+    setError(null);
     getHistory("sensors", limit)
-      .then((res) => setRecords(res?.records || []))
-      .catch(console.error)
+      .then((res) => {
+        setRecords(res?.records || []);
+      })
+      .catch((err) => {
+        console.error("Historical data error:", err);
+        setError(err.message || "Failed to load telemetry data");
+        setRecords([]);
+      })
       .finally(() => setLoading(false));
   };
 
   useEffect(fetchData, [limit]);
 
   // Build scatter data: temperature vs humidity, colour by moisture
-  const scatterData = records.map((r) => ({
-    x:    parseFloat(r.temperature_c),
-    y:    parseFloat(r.humidity_pct),
-    z:    parseFloat(r.grain_moisture) * 5,
-    ts:   r.timestamp,
-  })).filter((d) => !isNaN(d.x) && !isNaN(d.y));
+  const scatterData = records
+    .filter((r) => r.temperature_c != null && r.humidity_pct != null)
+    .map((r) => ({
+      x:    parseFloat(r.temperature_c),
+      y:    parseFloat(r.humidity_pct),
+      z:    parseFloat(r.grain_moisture || 10) * 5,
+      ts:   r.timestamp,
+    }))
+    .filter((d) => !isNaN(d.x) && !isNaN(d.y) && isFinite(d.x) && isFinite(d.y));
 
   return (
     <div className="space-y-6">
@@ -55,11 +66,36 @@ export default function HistoricalCharts() {
         </select>
       </div>
 
+      {error && (
+        <div className="bg-red-950/40 border border-red-700/50 rounded-xl p-4 text-sm text-red-300 flex items-center justify-between">
+          <span>Failed to load historical data: {error}</span>
+          <button
+            onClick={fetchData}
+            className="px-3 py-1 bg-red-900/60 hover:bg-red-800 text-red-200 rounded text-xs transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-64 bg-gray-900 rounded-xl animate-pulse border border-gray-800" />
           ))}
+        </div>
+      ) : records.length === 0 ? (
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-12 text-center">
+          <p className="text-gray-400 font-medium text-base mb-1">No Telemetry Records Available</p>
+          <p className="text-gray-600 text-xs max-w-md mx-auto mb-4">
+            The historical telemetry buffer is currently empty or awaiting sensor ingest.
+          </p>
+          <button
+            onClick={fetchData}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors"
+          >
+            Refresh Telemetry
+          </button>
         </div>
       ) : (
         <>

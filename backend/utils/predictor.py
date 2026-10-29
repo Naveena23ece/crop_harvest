@@ -102,8 +102,11 @@ class GrainRiskPredictor:
                 self._loaded = False
                 return False
 
-            self.scaler        = joblib.load(scaler_path)
-            self.label_encoder = joblib.load(le_path)
+            import warnings
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message=".*Trying to unpickle estimator.*")
+                self.scaler        = joblib.load(scaler_path)
+                self.label_encoder = joblib.load(le_path)
             self.feature_cols  = joblib.load(fc_path) if os.path.exists(fc_path) else None
 
             # PyTorch 2.6+ requires weights_only=False to load full model objects

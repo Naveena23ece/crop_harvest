@@ -45,6 +45,8 @@ from contextlib import asynccontextmanager
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from backend.utils.predictor    import get_predictor, RECOMMENDATIONS
+from backend.utils.local_store  import local_store
+from backend.utils.json_utils   import sanitize_json_value
 from backend.firebase.firebase_client import (
     get_latest_sensor_reading,
     get_sensor_history,
@@ -55,37 +57,8 @@ from backend.firebase.firebase_client import (
     update_model_info,
     get_mock_sensor_reading,
     init_firebase,
+    is_firebase_available,
 )
-
-# ─────────────────────────────────────────────
-# IN-MEMORY SESSION BUFFERS (Software-phase demonstration)
-# ─────────────────────────────────────────────
-_session_predictions: deque = deque(maxlen=200)
-_session_alerts: deque = deque(maxlen=100)
-
-# Seed an initial alert to demonstrate alert structure safely
-_session_alerts.append({
-    "risk_category":   "High",
-    "message":         "HIGH RISK: Storage temperature and moisture threshold exceeded",
-    "recommendations": [
-        "Activate emergency ventilation immediately.",
-        "Inspect grain surface for early signs of clumping.",
-        "Check grain moisture levels with moisture probe."
-    ],
-    "sensor_snapshot": {
-        "temperature_c": 36.8,
-        "humidity_pct": 84.0,
-        "gas_concentration": 1280.0,
-        "grain_moisture": 17.5,
-        "storage_duration": 60,
-        "ext_temperature_c": 38.0,
-        "ventilation_status": 0,
-        "battery_voltage": 3.75,
-        "sensor_health": 1
-    },
-    "timestamp": datetime.now(timezone.utc).isoformat(),
-    "source": "Session Buffer (Simulated Baseline)"
-})
 
 # ─────────────────────────────────────────────
 # LOGGING
@@ -102,15 +75,18 @@ logger = logging.getLogger("api")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info("Starting Grain Storage Risk API ...")
+    logger.info("Starting Grain Storage Risk API (Software Phase Prototype) ...")
     predictor = get_predictor()
     if predictor._loaded:
-        logger.info("✓ AR-TCN model loaded at startup")
-        try:
-            init_firebase()
-            update_model_info(predictor.get_model_info())
-        except Exception:
-            pass
+        logger.info("✓ AR-TCN model checkpoint loaded successfully")
+        if is_firebase_available():
+            try:
+                update_model_info(predictor.get_model_info())
+                logger.info("✓ Firebase Realtime Database synced")
+            except Exception as e:
+                logger.warning(f"Could not update Firebase model info: {e}")
+        else:
+            logger.info("✓ Local Prototype Persistence active (backend/data/local_storage.json)")
     else:
         logger.warning("⚠ Model not loaded — running in demo mode (rule-based fallback)")
     yield
@@ -281,27 +257,41 @@ async def get_latest_risk(
     use_mock: bool = Query(default=False, description="Use mock data for demo")
 ):
     """
-    Fetches the latest sensor reading from Firebase and returns a prediction.
-    This is polled by the dashboard every 60 seconds.
+    Fetches the latest sensor reading from Firebase, local store, or simulated telemetry
+    and evaluates risk using the AR-TCN model. Polled by the frontend dashboard.
     """
     try:
+        data_source = "simulated_telemetry"
         if use_mock:
             sensor_data = get_mock_sensor_reading()
         else:
-            sensor_data = get_latest_sensor_reading()
+            sensor_data = None
+            if is_firebase_available():
+                sensor_data = get_latest_sensor_reading()
+                if sensor_data:
+                    data_source = "firebase"
             if not sensor_data:
-                sensor_data = get_mock_sensor_reading()
+                sensor_data = local_store.get_latest_sensor_reading()
+                if sensor_data:
+                    data_source = "local_prototype_persistence"
+                else:
+                    sensor_data = get_mock_sensor_reading()
+                    data_source = "simulated_telemetry"
 
         predictor = get_predictor()
         result    = predictor.predict_single(sensor_data)
 
         background_tasks.add_task(_persist_prediction, result)
 
-        return {
-            "sensor_data":  sensor_data,
-            "prediction":   result,
-            "timestamp":    _utcnow(),
+        response_payload = {
+            "sensor_data":    sensor_data,
+            "prediction":     result,
+            "data_source":    data_source,
+            "is_simulated":   False if data_source == "firebase" else True,
+            "operating_mode": "Live Cloud Sync" if data_source == "firebase" else "Local Prototype Mode (Phase 1 Software Review)",
+            "timestamp":      _utcnow(),
         }
+        return sanitize_json_value(response_payload)
     except Exception as e:
         logger.error(f"/latest-risk error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -317,16 +307,26 @@ async def get_history(
 ):
     """Returns historical data from Firebase or local simulated replay buffer."""
     try:
-        data_source = "firebase"
-        is_simulation = False
+        data_source = "firebase" if is_firebase_available() else "local_prototype_persistence"
+        is_simulation = not is_firebase_available()
+        records = []
+
         if type == "predictions":
-            records = get_prediction_history(limit)
-            if not records and _session_predictions:
-                records = list(_session_predictions)[-limit:]
-                data_source = "local_session_memory"
+            if is_firebase_available():
+                records = get_prediction_history(limit)
+            if not records:
+                records = local_store.get_predictions(limit)
+                data_source = "local_prototype_persistence"
                 is_simulation = True
+
         elif type == "sensors":
-            records = get_sensor_history(limit)
+            if is_firebase_available():
+                records = get_sensor_history(limit)
+            if not records:
+                records = local_store.get_sensor_history(limit)
+                if records:
+                    data_source = "local_prototype_persistence"
+                    is_simulation = True
             if not records:
                 # Load simulated replay from synthetic dataset
                 csv_path = os.path.join(
@@ -335,22 +335,26 @@ async def get_history(
                 if os.path.exists(csv_path):
                     try:
                         df_tail = pd.read_csv(csv_path).tail(limit)
-                        records = df_tail.to_dict(orient="records")
+                        # Sanitize floats into JSON-compliant values
+                        raw_records = df_tail.to_dict(orient="records")
+                        records = [sanitize_json_value(r) for r in raw_records]
                         data_source = "simulated_telemetry_replay"
                         is_simulation = True
                     except Exception as err:
                         logger.warning(f"Failed to read dataset tail: {err}")
                         records = []
+
         elif type == "alerts":
-            records = get_alert_history(limit)
-            if not records and _session_alerts:
-                records = list(_session_alerts)[:limit]
-                data_source = "local_session_memory"
+            if is_firebase_available():
+                records = get_alert_history(limit)
+            if not records:
+                records = local_store.get_alerts(limit)
+                data_source = "local_prototype_persistence"
                 is_simulation = True
         else:
             raise HTTPException(status_code=400, detail="type must be: predictions|sensors|alerts")
 
-        return {
+        response_payload = {
             "type":               type,
             "count":              len(records),
             "records":            records,
@@ -359,6 +363,7 @@ async def get_history(
             "mode":               "Simulated Telemetry Replay (Phase 1 Software Prototype)" if is_simulation else "Live Sensor Telemetry",
             "timestamp":          _utcnow(),
         }
+        return sanitize_json_value(response_payload)
     except HTTPException:
         raise
     except Exception as e:
@@ -370,17 +375,21 @@ async def get_history(
 async def get_alerts(limit: int = Query(default=20, ge=1, le=100)):
     """Returns recent high-risk alerts."""
     try:
-        alerts = get_alert_history(limit)
+        alerts = []
         data_source = "firebase"
-        if not alerts and _session_alerts:
-            alerts = list(_session_alerts)[:limit]
-            data_source = "local_session_memory"
-        return {
+        if is_firebase_available():
+            alerts = get_alert_history(limit)
+        if not alerts:
+            alerts = local_store.get_alerts(limit)
+            data_source = "local_prototype_persistence"
+
+        response_payload = {
             "count":       len(alerts),
             "alerts":      alerts,
             "data_source": data_source,
             "timestamp":   _utcnow(),
         }
+        return sanitize_json_value(response_payload)
     except Exception as e:
         logger.error(f"/alerts error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -483,29 +492,22 @@ async def get_recommendations(risk_level: str):
 # BACKGROUND TASK HELPERS
 # ─────────────────────────────────────────────
 async def _persist_prediction(result: Dict):
-    """Saves prediction to session memory and Firebase if available."""
+    """Saves prediction to local prototype persistence and Firebase if available."""
     try:
-        # In-memory session tracking for software-phase demonstration
-        _session_predictions.append(result)
-        if result.get("alert"):
-            _session_alerts.appendleft({
-                "risk_category":   result.get("risk_category", "High"),
-                "message":         "HIGH RISK: Anomaly detected during storage monitoring",
-                "recommendations": result.get("recommendations", []),
-                "sensor_snapshot": result.get("sensor_snapshot", {}),
-                "timestamp":       result.get("timestamp", _utcnow()),
-                "source":          "Live AR-TCN Prediction"
-            })
+        # 1. Local cross-restart persistence
+        local_store.save_prediction(result)
 
-        write_prediction(result)
-        if result.get("alert"):
-            write_alert({
-                "risk_category":   result["risk_category"],
-                "message":         "HIGH RISK detected — immediate action required",
-                "recommendations": result["recommendations"],
-                "sensor_snapshot": result["sensor_snapshot"],
-                "timestamp":       result["timestamp"],
-            })
+        # 2. Firebase write if configured
+        if is_firebase_available():
+            write_prediction(result)
+            if result.get("alert"):
+                write_alert({
+                    "risk_category":   result["risk_category"],
+                    "message":         "HIGH RISK detected — immediate action required",
+                    "recommendations": result["recommendations"],
+                    "sensor_snapshot": result["sensor_snapshot"],
+                    "timestamp":       result["timestamp"],
+                })
     except Exception as e:
         logger.warning(f"Failed to persist prediction: {e}")
 

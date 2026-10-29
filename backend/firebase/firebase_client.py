@@ -57,26 +57,40 @@ NODES = {
 # INITIALISE FIREBASE
 # ─────────────────────────────────────────────
 _firebase_initialized = False
+_firebase_available = False
+
+
+def is_firebase_available() -> bool:
+    """Returns True if Firebase has been initialized with valid credentials."""
+    global _firebase_initialized
+    if not _firebase_initialized:
+        init_firebase()
+    return _firebase_available
 
 
 def init_firebase() -> None:
     """
-    Initialise the Firebase Admin SDK.
+    Initialise the Firebase Admin SDK if credentials exist.
+    If credentials are not found, cleanly enables Local Prototype Mode.
     Idempotent — safe to call multiple times.
     """
-    global _firebase_initialized
+    global _firebase_initialized, _firebase_available
     if _firebase_initialized:
         return
 
     if not firebase_admin._apps:
         if os.path.exists(FIREBASE_CREDENTIALS_PATH):
-            cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
-            firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_DB_URL})
-            logger.info(f"Firebase initialised with service account: {FIREBASE_CREDENTIALS_PATH}")
+            try:
+                cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+                firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_DB_URL})
+                _firebase_available = True
+                logger.info(f"Firebase initialised with service account: {FIREBASE_CREDENTIALS_PATH}")
+            except Exception as e:
+                _firebase_available = False
+                logger.warning(f"Failed to initialise Firebase with service account: {e}")
         else:
-            # Use Application Default Credentials (e.g. Google Cloud Run)
-            firebase_admin.initialize_app(options={"databaseURL": FIREBASE_DB_URL})
-            logger.warning("Firebase initialised with default credentials (no key file found)")
+            _firebase_available = False
+            logger.info("Firebase serviceAccountKey.json not detected — operating in Local Prototype Mode.")
 
     _firebase_initialized = True
 
@@ -102,7 +116,8 @@ def get_latest_sensor_reading() -> Optional[Dict[str, Any]]:
             "sensor_health":   1
         }
     """
-    init_firebase()
+    if not is_firebase_available():
+        return None
     try:
         ref  = db.reference(NODES["latest"])
         data = ref.get()
@@ -119,7 +134,8 @@ def get_sensor_history(limit: int = 100) -> List[Dict[str, Any]]:
     Reads the most recent `limit` sensor readings from /sensor_data.
     Returns a list sorted by timestamp (oldest first).
     """
-    init_firebase()
+    if not is_firebase_available():
+        return []
     try:
         ref  = db.reference(NODES["sensor_data"])
         data = ref.order_by_key().limit_to_last(limit + 1).get()
@@ -137,7 +153,8 @@ def get_sensor_history(limit: int = 100) -> List[Dict[str, Any]]:
 
 def get_prediction_history(limit: int = 50) -> List[Dict[str, Any]]:
     """Reads the most recent `limit` prediction records."""
-    init_firebase()
+    if not is_firebase_available():
+        return []
     try:
         ref  = db.reference(NODES["predictions"])
         data = ref.order_by_key().limit_to_last(limit).get()
@@ -153,7 +170,8 @@ def get_prediction_history(limit: int = 50) -> List[Dict[str, Any]]:
 
 def get_alert_history(limit: int = 30) -> List[Dict[str, Any]]:
     """Reads the most recent `limit` alert records."""
-    init_firebase()
+    if not is_firebase_available():
+        return []
     try:
         ref  = db.reference(NODES["alerts"])
         data = ref.order_by_key().limit_to_last(limit).get()
@@ -177,7 +195,8 @@ def write_prediction(prediction: Dict[str, Any]) -> str:
     prediction dict should include:
         timestamp, risk_category, probabilities, sensor_snapshot
     """
-    init_firebase()
+    if not is_firebase_available():
+        return ""
     try:
         ref = db.reference(NODES["predictions"])
         record = {
@@ -201,7 +220,8 @@ def write_alert(alert: Dict[str, Any]) -> str:
     Writes an alert record to /alerts.
     alert dict should include: risk_category, message, recommendations
     """
-    init_firebase()
+    if not is_firebase_available():
+        return ""
     try:
         ref = db.reference(NODES["alerts"])
         record = {
@@ -222,7 +242,8 @@ def write_alert(alert: Dict[str, Any]) -> str:
 
 def update_model_info(info: Dict[str, Any]) -> None:
     """Updates the model metadata node in Firebase."""
-    init_firebase()
+    if not is_firebase_available():
+        return None
     try:
         ref = db.reference(NODES["model_info"])
         ref.set(info)
@@ -245,7 +266,8 @@ def register_sensor_listener(callback: Callable[[Dict], None]) -> Any:
     Returns:
         The listener handle (call .close() to stop listening).
     """
-    init_firebase()
+    if not is_firebase_available():
+        return None
     ref = db.reference(NODES["latest"])
 
     def _on_update(event):

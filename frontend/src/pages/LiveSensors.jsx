@@ -47,7 +47,7 @@ export default function LiveSensors() {
         <div>
           <h1 className="text-2xl font-bold text-white">Live Sensor Data</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Updates every 15 minutes from ESP32 IoT module
+            Simulated telemetry stream (Phase 1 Software Prototype · Physical ESP32 scheduled for Phase 2)
             {lastUpdated && ` · Last: ${formatTimestamp(lastUpdated)}`}
           </p>
         </div>
