@@ -59,6 +59,9 @@ def initialize_database():
         # 5. Migrate local_storage.json if present
         _migrate_local_storage(db)
 
+        # 6. Seed baseline sensor readings if empty
+        seed_sensor_readings(db)
+
         db.commit()
         logger.info("Database initialization completed successfully.")
     except Exception as e:
@@ -278,6 +281,42 @@ def _migrate_local_storage(db):
 
     except Exception as e:
         logger.warning(f"Failed to migrate legacy local_storage.json (safe to continue): {e}")
+
+
+def seed_sensor_readings(db):
+    """Seeds baseline telemetry records if sensor_readings table is empty."""
+    count = db.query(SensorReading).count()
+    if count == 0:
+        import random
+        from datetime import timedelta
+        now = _utcnow()
+        readings = []
+        for unit in ["silo-1", "silo-2", "silo-3"]:
+            base_temp = 24.5 if unit == "silo-1" else (22.0 if unit == "silo-2" else 26.0)
+            base_hum = 62.0 if unit == "silo-1" else (58.0 if unit == "silo-2" else 65.0)
+            base_moist = 13.5 if unit == "silo-1" else (12.8 if unit == "silo-2" else 14.2)
+            base_gas = 420.0 if unit == "silo-1" else (390.0 if unit == "silo-2" else 450.0)
+
+            for i in range(50, -1, -1):
+                t = now - timedelta(minutes=i * 5)
+                readings.append(SensorReading(
+                    unit_id=unit,
+                    timestamp=t,
+                    temperature_c=round(base_temp + random.uniform(-1.2, 1.2), 2),
+                    humidity_pct=round(base_hum + random.uniform(-2.0, 2.0), 2),
+                    gas_concentration=round(base_gas + random.uniform(-15.0, 15.0), 1),
+                    grain_moisture=round(base_moist + random.uniform(-0.4, 0.4), 2),
+                    storage_duration=round(14.0 + (50 - i) * 0.05, 2),
+                    ext_temperature_c=round(base_temp + 2.5 + random.uniform(-1.0, 1.0), 2),
+                    ventilation_status=1,
+                    battery_voltage=3.62,
+                    sensor_health=100,
+                    is_simulated=True,
+                    source="simulated_telemetry_replay"
+                ))
+        db.add_all(readings)
+        db.flush()
+        logger.info(f"Seeded {len(readings)} baseline telemetry records into sensor_readings.")
 
 
 if __name__ == "__main__":

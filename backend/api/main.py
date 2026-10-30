@@ -931,15 +931,15 @@ async def get_history(
                 if unit_id:
                     query = query.filter(DBSensorReading.unit_id == unit_id)
                 db_sensors = query.order_by(desc(DBSensorReading.timestamp)).limit(limit).all()
-                if db_sensors and len(db_sensors) >= limit:
+                if db_sensors:
                     records = [r.to_dict() for r in db_sensors]
                 if not records:
                     records = local_store.get_sensor_history(limit)
-                    if records and len(records) >= limit:
+                    if records:
                         data_source = "local_prototype_persistence"
                     else:
                         records = []
-                if not records or len(records) < limit:
+                if not records:
                     csv_path = os.path.join(
                         os.path.dirname(__file__), "..", "..", "dataset", "grain_storage_dataset.csv"
                     )
@@ -952,6 +952,16 @@ async def get_history(
                         except Exception as err:
                             logger.warning(f"Failed to read dataset tail: {err}")
                             records = []
+                if not records:
+                    from backend.database.init_db import seed_sensor_readings
+                    seed_sensor_readings(db)
+                    db.commit()
+                    query = db.query(DBSensorReading)
+                    if unit_id:
+                        query = query.filter(DBSensorReading.unit_id == unit_id)
+                    db_sensors = query.order_by(desc(DBSensorReading.timestamp)).limit(limit).all()
+                    records = [r.to_dict() for r in db_sensors]
+                    data_source = "cloud_baseline_telemetry"
 
             elif type == "alerts":
                 query = db.query(DBAlert)
