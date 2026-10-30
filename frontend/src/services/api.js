@@ -6,7 +6,7 @@
 
 import axios from "axios";
 
-const BASE_URL = (process.env.REACT_APP_API_URL || "http://localhost:8000").replace(/\/$/, "");
+const BASE_URL = (process.env.REACT_APP_API_URL || "https://grainguard-backend-ssva.onrender.com").replace(/\/$/, "");
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
